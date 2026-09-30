@@ -1,41 +1,18 @@
-import { ClassesModule } from './classes/classes.module';
-import { StudentClassesModule } from './classes/student-classes.module';
-import { StudentContentModule, TeacherContentModule } from './content/content.module';
-import { StudentAdventureModule } from './adventure/adventure.module';
-import { AdminContentModule } from './admin-content/admin-content.module';
-import { TeacherAssignmentsModule } from './assignments/assignments.module';
-import { StudentAssignmentsModule } from './assignments/student-assignments.module';
-import { AttemptsModule } from './attempts/attempts.module';
-import { StudentFeedbackModule, TeacherFeedbackModule, AdminFeedbackModule } from './feedback/feedback.module';
-import { TeacherReportsModule } from './reports/reports.module';
-import { AdminSuspiciousModule } from './attempts/suspicious.module';
-import { StudentStreakModule } from './attempts/streak.module';
-import { StudentLeaderboardsModule } from './leaderboards/leaderboards.module';
-import { AdminOverviewModule } from './admin-overview/admin-overview.module';
 import 'dotenv/config';
 import 'reflect-metadata';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { AuthModule } from './auth/auth.module';
-import { StudentProfileModule } from './users/student-profile.module';
-import { ProfileModule } from './users/profile.module';
-import { AdminUsersModule } from './users/admin-users.module';
-import { setupSwagger } from './swagger';
+import { setupSwagger, docsPolicy } from './swagger';
+import { audienceModules } from './swagger-modules';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
 
-  if (process.env.NODE_ENV === 'development') {
-    // Add each future feature module only to its audience's list.
-    const sharedModules = [AppModule, AuthModule, ProfileModule];
-    setupSwagger(app, {
-      student: [...sharedModules, StudentProfileModule, StudentClassesModule, StudentContentModule, StudentAdventureModule, StudentAssignmentsModule, AttemptsModule, StudentFeedbackModule, StudentStreakModule, StudentLeaderboardsModule],
-      teacher: [...sharedModules, ClassesModule, TeacherContentModule, TeacherAssignmentsModule, TeacherFeedbackModule, TeacherReportsModule],
-      admin: [...sharedModules, AdminUsersModule, AdminContentModule, AdminFeedbackModule, AdminSuspiciousModule, AdminOverviewModule],
-    });
-  }
+  const docs = docsPolicy();
+  if (docs.enabled) setupSwagger(app, audienceModules(), docs.guard);
+  else new Logger('Docs').log('API documentation pages are disabled: ' + docs.reason);
 
   await app.listen(
     Number(process.env.PORT ?? 3000),

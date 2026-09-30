@@ -1,0 +1,2302 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "HealthController_health",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Liveness check: the process is up",
+        "tags": [
+          "Shared / Health"
+        ]
+      }
+    },
+    "/auth/request-code": {
+      "post": {
+        "operationId": "AuthController_requestCode",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestCodeResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid email or unexpected fields"
+          },
+          "429": {
+            "description": "Email or IP request limit exceeded"
+          },
+          "503": {
+            "description": "SMTP unavailable or unconfigured"
+          }
+        },
+        "summary": "Request a time-limited email sign-in code",
+        "tags": [
+          "Shared / Authentication"
+        ]
+      }
+    },
+    "/auth/verify-code": {
+      "post": {
+        "operationId": "AuthController_verifyCode",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyCodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyCodeResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid email/code format or unexpected fields"
+          },
+          "401": {
+            "description": "Incorrect, expired, consumed or locked verification code"
+          },
+          "429": {
+            "description": "Email or IP verification limit exceeded"
+          }
+        },
+        "summary": "Consume a one-time code and create a revocable session",
+        "tags": [
+          "Shared / Authentication"
+        ]
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "Current session revoked"
+          },
+          "401": {
+            "description": "Missing, expired or revoked access token"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Revoke the current session",
+        "tags": [
+          "Shared / Authentication"
+        ]
+      }
+    },
+    "/auth/logout-all": {
+      "post": {
+        "operationId": "AuthController_logoutAll",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "All sessions for the current account revoked"
+          },
+          "401": {
+            "description": "Missing, expired or revoked access token"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Revoke every session of the current account",
+        "tags": [
+          "Shared / Authentication"
+        ]
+      }
+    },
+    "/me": {
+      "get": {
+        "operationId": "ProfileController_getProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Current account only; identity comes from the verified token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired or revoked access token"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get your account: role, display name, avatar and timezone",
+        "tags": [
+          "Shared / Profile"
+        ]
+      }
+    },
+    "/teacher/classes/{id}/members": {
+      "get": {
+        "operationId": "ClassesController_members",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MembershipDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid name, UUID or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Teacher role required"
+          },
+          "404": {
+            "description": "Class missing or owned by another teacher"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List current members of your class; archived classes return an empty list",
+        "tags": [
+          "Teacher / Classes"
+        ]
+      }
+    },
+    "/teacher/classes/{id}/members/{studentId}": {
+      "delete": {
+        "description": "Returns removed=false if already absent. Cannot remove a membership in another class.",
+        "operationId": "ClassesController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "studentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "removed"
+                  ],
+                  "properties": {
+                    "removed": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid name, UUID or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Teacher role required"
+          },
+          "404": {
+            "description": "Class missing or owned by another teacher"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "End a membership in your class, preserving its history",
+        "tags": [
+          "Teacher / Classes"
+        ]
+      }
+    },
+    "/teacher/classes": {
+      "post": {
+        "operationId": "ClassesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateClassDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid name, UUID or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Teacher role required"
+          },
+          "404": {
+            "description": "Class missing or owned by another teacher"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a class with a random unique join code",
+        "tags": [
+          "Teacher / Classes"
+        ]
+      },
+      "get": {
+        "operationId": "ClassesController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ClassDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid name, UUID or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Teacher role required"
+          },
+          "404": {
+            "description": "Class missing or owned by another teacher"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List your active and archived classes",
+        "tags": [
+          "Teacher / Classes"
+        ]
+      }
+    },
+    "/teacher/classes/{id}": {
+      "get": {
+        "operationId": "ClassesController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid name, UUID or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Teacher role required"
+          },
+          "404": {
+            "description": "Class missing or owned by another teacher"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get your class and its active join code",
+        "tags": [
+          "Teacher / Classes"
+        ]
+      }
+    },
+    "/teacher/classes/{id}/archive": {
+      "post": {
+        "operationId": "ClassesController_archive",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid name, UUID or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Teacher role required"
+          },
+          "404": {
+            "description": "Class missing or owned by another teacher"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Archive your class; repeated requests preserve the original archive time",
+        "tags": [
+          "Teacher / Classes"
+        ]
+      }
+    },
+    "/teacher/classes/{id}/join-code/rotate": {
+      "post": {
+        "operationId": "ClassesController_rotate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid name, UUID or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Teacher role required"
+          },
+          "404": {
+            "description": "Class missing or owned by another teacher"
+          },
+          "409": {
+            "description": "Class archived or code allocation needs retry"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Replace the join code of your active class; old code is removed",
+        "tags": [
+          "Teacher / Classes"
+        ]
+      }
+    },
+    "/teacher/content": {
+      "get": {
+        "description": "Adventure-only items are excluded.",
+        "operationId": "TeacherContentController_list",
+        "parameters": [
+          {
+            "name": "subject",
+            "required": false,
+            "in": "query",
+            "description": "Exact subject match",
+            "schema": {
+              "maxLength": 120,
+              "example": "ضرب",
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Case-insensitive title search",
+            "schema": {
+              "maxLength": 100,
+              "example": "جمع",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "offset",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "default": 0,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ContentDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid filter, UUID or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Teacher role required"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Search published content that can be assigned as practice",
+        "tags": [
+          "Teacher / Content"
+        ]
+      }
+    },
+    "/teacher/content/{id}": {
+      "get": {
+        "operationId": "TeacherContentController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid filter, UUID or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Teacher role required"
+          },
+          "404": {
+            "description": "Content missing, not published or not available for practice"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Preview one assignable published content item",
+        "tags": [
+          "Teacher / Content"
+        ]
+      }
+    },
+    "/teacher/assignments": {
+      "post": {
+        "description": "Each call creates a new independent allocation (new ID), even for the same content and class. Recipients are stored explicitly and fixed at creation: whole_class snapshots the current members. There are no student groups.",
+        "operationId": "TeacherAssignmentsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAssignmentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssignmentDetailDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid field, window, audience or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Teacher role required"
+          },
+          "404": {
+            "description": "Class not yours, or content not published practice content"
+          },
+          "409": {
+            "description": "Class archived, or whole_class with no students"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Assign published practice content to a whole class or selected students for a time window",
+        "tags": [
+          "Teacher / Assignments"
+        ]
+      },
+      "get": {
+        "operationId": "TeacherAssignmentsController_list",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "phase",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "upcoming",
+                "active",
+                "ended",
+                "cancelled"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "offset",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "default": 0,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AssignmentDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid field, window, audience or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Teacher role required"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List your assignments, newest window first",
+        "tags": [
+          "Teacher / Assignments"
+        ]
+      }
+    },
+    "/teacher/assignments/{id}": {
+      "get": {
+        "operationId": "TeacherAssignmentsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssignmentDetailDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid field, window, audience or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Teacher role required"
+          },
+          "404": {
+            "description": "Assignment missing or owned by another teacher"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get one of your assignments with its recipients",
+        "tags": [
+          "Teacher / Assignments"
+        ]
+      }
+    },
+    "/teacher/assignments/{id}/progress": {
+      "get": {
+        "description": "Every assignment ID is an independent turn: results from Adventure or from an earlier assignment of the same content never count here. Students who left the class are omitted.",
+        "operationId": "TeacherAssignmentsController_progress",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssignmentProgressDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid field, window, audience or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Teacher role required"
+          },
+          "404": {
+            "description": "Assignment missing or owned by another teacher"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Status, attempts, best stars and points of each student for this assignment turn only",
+        "tags": [
+          "Teacher / Assignments"
+        ]
+      }
+    },
+    "/teacher/assignments/{id}/cancel": {
+      "post": {
+        "description": "Repeating the call is a no-op.",
+        "operationId": "TeacherAssignmentsController_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssignmentDetailDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid field, window, audience or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Teacher role required"
+          },
+          "404": {
+            "description": "Assignment missing or owned by another teacher"
+          },
+          "409": {
+            "description": "The window has already ended"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cancel an assignment whose window has not ended; records are kept",
+        "tags": [
+          "Teacher / Assignments"
+        ]
+      }
+    },
+    "/teacher/feedback": {
+      "get": {
+        "description": "Summary covers all matches; items are newest first. Students who left your class are not shown.",
+        "operationId": "TeacherFeedbackController_list",
+        "parameters": [
+          {
+            "name": "contentId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "offset",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "default": 0,
+              "type": "number"
+            }
+          },
+          {
+            "name": "classId",
+            "required": false,
+            "in": "query",
+            "description": "Only students currently in this class of yours",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackListDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid filter, UUID or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Teacher role required"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Game ratings from students currently in your active classes",
+        "tags": [
+          "Teacher / Feedback"
+        ]
+      }
+    },
+    "/teacher/reports/assignments/{id}": {
+      "get": {
+        "description": "Only your own assignment. Students who have left the class are omitted. Each turn is reported on its own.",
+        "operationId": "ReportsController_assignment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssignmentReportDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Teacher role required"
+          },
+          "404": {
+            "description": "Assignment missing or owned by another teacher"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Report of one assignment turn: every current student with attempts, times, best stars, pass status and game feedback",
+        "tags": [
+          "Teacher / Reports"
+        ]
+      }
+    },
+    "/teacher/reports/assignments/{id}/students/{studentId}": {
+      "get": {
+        "operationId": "ReportsController_studentInAssignment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "studentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentAssignmentReportDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Teacher role required"
+          },
+          "404": {
+            "description": "Not your assignment, or the student is not a current member of its class"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Full attempt history of one student in one assignment turn",
+        "tags": [
+          "Teacher / Reports"
+        ]
+      }
+    },
+    "/teacher/reports/students/{studentId}": {
+      "get": {
+        "description": "Only for a student currently in one of your active classes, and only your own assignments for that class. After the student moves to another class you no longer see their data.",
+        "operationId": "ReportsController_student",
+        "parameters": [
+          {
+            "name": "studentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentReportDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Teacher role required"
+          },
+          "404": {
+            "description": "The student is not currently in one of your classes"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A student of your class: status of each of your assignment turns",
+        "tags": [
+          "Teacher / Reports"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Hodhod teacher API",
+    "description": "Implemented endpoints only. Email sign-in and revocable Bearer sessions.",
+    "version": "0.1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
+    "schemas": {
+      "EmailDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "student@example.com"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "RequestCodeResponseDto": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "If delivery succeeds, a sign-in code will arrive shortly"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "VerifyCodeDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "student@example.com"
+          },
+          "code": {
+            "type": "string",
+            "example": "083719",
+            "description": "Six-digit emailed code; 11111 only in explicitly enabled development mode"
+          }
+        },
+        "required": [
+          "email",
+          "code"
+        ]
+      },
+      "AuthUserDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "example": "student@example.com"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "student",
+              "teacher",
+              "admin"
+            ]
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "avatarId": {
+            "type": "string",
+            "nullable": true
+          },
+          "timezone": {
+            "type": "string",
+            "example": "Asia/Tehran"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "role",
+          "displayName",
+          "avatarId",
+          "timezone",
+          "createdAt"
+        ]
+      },
+      "VerifyCodeResponseDto": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "description": "JWT access token"
+          },
+          "user": {
+            "$ref": "#/components/schemas/AuthUserDto"
+          },
+          "isNewUser": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "accessToken",
+          "user",
+          "isNewUser"
+        ]
+      },
+      "ProfileDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "example": "student@example.com"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "student",
+              "teacher",
+              "admin"
+            ]
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "avatarId": {
+            "type": "string",
+            "nullable": true
+          },
+          "timezone": {
+            "type": "string",
+            "example": "Asia/Tehran"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "role",
+          "displayName",
+          "avatarId",
+          "timezone",
+          "createdAt"
+        ]
+      },
+      "MembershipDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "classId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "22222222-2222-4222-8222-222222222222"
+          },
+          "className": {
+            "type": "string",
+            "example": "Third grade A"
+          },
+          "studentId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "33333333-3333-4333-8333-333333333333"
+          },
+          "joinedAt": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-09-30T10:00:00.000Z"
+          },
+          "endedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          }
+        },
+        "required": [
+          "id",
+          "classId",
+          "className",
+          "studentId",
+          "joinedAt",
+          "endedAt"
+        ]
+      },
+      "CreateClassDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "پایه سوم الف",
+            "minLength": 1,
+            "maxLength": 120
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "ClassDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "teacherId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "archived"
+            ]
+          },
+          "joinCode": {
+            "type": "object",
+            "nullable": true,
+            "description": "Active join code; null for archived classes"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "archivedAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "teacherId",
+          "name",
+          "status",
+          "joinCode",
+          "createdAt",
+          "archivedAt"
+        ]
+      },
+      "ContentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Stable backend content ID; progress and reports always refer to this"
+          },
+          "title": {
+            "type": "string",
+            "example": "ضرب اعداد دو رقمی"
+          },
+          "subject": {
+            "type": "string",
+            "example": "ضرب"
+          },
+          "grade": {
+            "type": "number",
+            "example": 3
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "adventure",
+              "practice",
+              "both"
+            ]
+          },
+          "unityId": {
+            "type": "string",
+            "example": "math3.multiply.two-digit",
+            "description": "Unity identifier of the current published version; may change between versions"
+          },
+          "version": {
+            "type": "number",
+            "example": 1,
+            "description": "Current published version number"
+          },
+          "publishedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "subject",
+          "grade",
+          "kind",
+          "unityId",
+          "version",
+          "publishedAt"
+        ]
+      },
+      "CreateAssignmentDto": {
+        "type": "object",
+        "properties": {
+          "classId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "One of your active classes"
+          },
+          "contentId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Published practice content (kind practice or both)"
+          },
+          "audience": {
+            "type": "string",
+            "enum": [
+              "whole_class",
+              "selected"
+            ],
+            "description": "whole_class fixes the recipients to the current members; selected uses studentIds"
+          },
+          "studentIds": {
+            "description": "Required for selected, forbidden for whole_class. Must all be current members of the class.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "startsAt": {
+            "type": "string",
+            "example": "2026-10-01T08:00:00+03:30",
+            "description": "ISO 8601 with UTC offset; defaults to the server time now"
+          },
+          "endsAt": {
+            "type": "string",
+            "example": "2026-10-08T20:00:00+03:30",
+            "description": "ISO 8601 with UTC offset; must be in the future, after startsAt, and at most 366 days after it"
+          }
+        },
+        "required": [
+          "classId",
+          "contentId",
+          "audience",
+          "endsAt"
+        ]
+      },
+      "RecipientDto": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "studentId",
+          "displayName"
+        ]
+      },
+      "AssignmentDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Every allocation gets a new ID, even for the same content and class"
+          },
+          "classId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "className": {
+            "type": "string"
+          },
+          "contentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "contentTitle": {
+            "type": "string"
+          },
+          "audience": {
+            "type": "string",
+            "enum": [
+              "whole_class",
+              "selected"
+            ]
+          },
+          "startsAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "endsAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "scheduled",
+              "cancelled",
+              "archived"
+            ]
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "upcoming",
+              "active",
+              "ended",
+              "cancelled"
+            ],
+            "description": "Computed from the server clock: upcoming, active, ended, or cancelled"
+          },
+          "recipientCount": {
+            "type": "number",
+            "example": 25
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "recipients": {
+            "description": "Explicit recipients fixed at creation who are still active members of the class; recipientCount is the original audience size",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecipientDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "classId",
+          "className",
+          "contentId",
+          "contentTitle",
+          "audience",
+          "startsAt",
+          "endsAt",
+          "status",
+          "phase",
+          "recipientCount",
+          "createdAt",
+          "recipients"
+        ]
+      },
+      "AssignmentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Every allocation gets a new ID, even for the same content and class"
+          },
+          "classId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "className": {
+            "type": "string"
+          },
+          "contentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "contentTitle": {
+            "type": "string"
+          },
+          "audience": {
+            "type": "string",
+            "enum": [
+              "whole_class",
+              "selected"
+            ]
+          },
+          "startsAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "endsAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "scheduled",
+              "cancelled",
+              "archived"
+            ]
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "upcoming",
+              "active",
+              "ended",
+              "cancelled"
+            ],
+            "description": "Computed from the server clock: upcoming, active, ended, or cancelled"
+          },
+          "recipientCount": {
+            "type": "number",
+            "example": 25
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "classId",
+          "className",
+          "contentId",
+          "contentTitle",
+          "audience",
+          "startsAt",
+          "endsAt",
+          "status",
+          "phase",
+          "recipientCount",
+          "createdAt"
+        ]
+      },
+      "TurnProgressDto": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "not_started",
+              "in_progress",
+              "passed"
+            ],
+            "description": "Status of this assignment turn only"
+          },
+          "bestStars": {
+            "type": "number",
+            "example": 0,
+            "description": "Best stars within this turn only"
+          },
+          "attemptCount": {
+            "type": "number",
+            "example": 0,
+            "description": "Attempts made in this turn only"
+          },
+          "points": {
+            "type": "number",
+            "example": 0,
+            "description": "Points earned from this turn only (sum of its ledger entries)"
+          },
+          "firstPassedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastAttemptAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "studentId",
+          "displayName",
+          "status",
+          "bestStars",
+          "attemptCount",
+          "points",
+          "firstPassedAt",
+          "lastAttemptAt"
+        ]
+      },
+      "AssignmentProgressDto": {
+        "type": "object",
+        "properties": {
+          "assignmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "upcoming",
+              "active",
+              "ended",
+              "cancelled"
+            ]
+          },
+          "students": {
+            "description": "Recipients who are still active members of the class",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TurnProgressDto"
+            }
+          }
+        },
+        "required": [
+          "assignmentId",
+          "phase",
+          "students"
+        ]
+      },
+      "FeedbackSummaryDto": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "number",
+            "example": 12
+          },
+          "average": {
+            "type": "number",
+            "nullable": true,
+            "example": 3.25
+          },
+          "distribution": {
+            "type": "object",
+            "example": {
+              "1": 0,
+              "2": 1,
+              "3": 4,
+              "4": 7
+            },
+            "description": "Number of ratings per value 1 to 4"
+          }
+        },
+        "required": [
+          "count",
+          "average",
+          "distribution"
+        ]
+      },
+      "FeedbackItemDto": {
+        "type": "object",
+        "properties": {
+          "contentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "rating": {
+            "type": "number",
+            "example": 4
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contentId",
+          "title",
+          "studentId",
+          "displayName",
+          "rating",
+          "createdAt"
+        ]
+      },
+      "FeedbackListDto": {
+        "type": "object",
+        "properties": {
+          "summary": {
+            "description": "Over all matching ratings, not just this page",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FeedbackSummaryDto"
+              }
+            ]
+          },
+          "items": {
+            "description": "Newest first. Never contains email addresses.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeedbackItemDto"
+            }
+          }
+        },
+        "required": [
+          "summary",
+          "items"
+        ]
+      },
+      "ReportRowDto": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "not_started",
+              "in_progress",
+              "passed"
+            ],
+            "description": "Status in this turn only"
+          },
+          "attemptCount": {
+            "type": "number",
+            "example": 3
+          },
+          "bestStars": {
+            "type": "number",
+            "example": 4
+          },
+          "passStars": {
+            "type": "number",
+            "example": 4
+          },
+          "points": {
+            "type": "number",
+            "example": 30
+          },
+          "firstAttemptAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastAttemptAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "firstPassedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "totalDurationSeconds": {
+            "type": "number",
+            "example": 240,
+            "description": "Total play time over all attempts in this turn, seconds"
+          },
+          "feedbackRating": {
+            "type": "number",
+            "nullable": true,
+            "example": 3,
+            "description": "The student's 1-4 interest rating for this game, if given. Independent of stars."
+          }
+        },
+        "required": [
+          "studentId",
+          "displayName",
+          "status",
+          "attemptCount",
+          "bestStars",
+          "passStars",
+          "points",
+          "firstAttemptAt",
+          "lastAttemptAt",
+          "firstPassedAt",
+          "totalDurationSeconds",
+          "feedbackRating"
+        ]
+      },
+      "AssignmentReportDto": {
+        "type": "object",
+        "properties": {
+          "assignmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "classId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "className": {
+            "type": "string"
+          },
+          "contentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "contentTitle": {
+            "type": "string"
+          },
+          "startsAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "endsAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "upcoming",
+              "active",
+              "ended",
+              "cancelled"
+            ]
+          },
+          "students": {
+            "description": "Recipients who are still active members of the class; students who left are omitted",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReportRowDto"
+            }
+          }
+        },
+        "required": [
+          "assignmentId",
+          "classId",
+          "className",
+          "contentId",
+          "contentTitle",
+          "startsAt",
+          "endsAt",
+          "phase",
+          "students"
+        ]
+      },
+      "AttemptRowDto": {
+        "type": "object",
+        "properties": {
+          "attemptId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "stars": {
+            "type": "number",
+            "example": 4
+          },
+          "maxStars": {
+            "type": "number",
+            "example": 5
+          },
+          "contentVersion": {
+            "type": "number",
+            "example": 1
+          },
+          "receivedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Server receipt time"
+          },
+          "durationSeconds": {
+            "type": "number",
+            "example": 95,
+            "description": "Play time in seconds"
+          }
+        },
+        "required": [
+          "attemptId",
+          "stars",
+          "maxStars",
+          "contentVersion",
+          "receivedAt",
+          "durationSeconds"
+        ]
+      },
+      "StudentAssignmentReportDto": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "not_started",
+              "in_progress",
+              "passed"
+            ],
+            "description": "Status in this turn only"
+          },
+          "attemptCount": {
+            "type": "number",
+            "example": 3
+          },
+          "bestStars": {
+            "type": "number",
+            "example": 4
+          },
+          "passStars": {
+            "type": "number",
+            "example": 4
+          },
+          "points": {
+            "type": "number",
+            "example": 30
+          },
+          "firstAttemptAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastAttemptAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "firstPassedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "totalDurationSeconds": {
+            "type": "number",
+            "example": 240,
+            "description": "Total play time over all attempts in this turn, seconds"
+          },
+          "feedbackRating": {
+            "type": "number",
+            "nullable": true,
+            "example": 3,
+            "description": "The student's 1-4 interest rating for this game, if given. Independent of stars."
+          },
+          "assignmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "attempts": {
+            "description": "Every attempt in this turn, oldest first",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttemptRowDto"
+            }
+          }
+        },
+        "required": [
+          "studentId",
+          "displayName",
+          "status",
+          "attemptCount",
+          "bestStars",
+          "passStars",
+          "points",
+          "firstAttemptAt",
+          "lastAttemptAt",
+          "firstPassedAt",
+          "totalDurationSeconds",
+          "feedbackRating",
+          "assignmentId",
+          "attempts"
+        ]
+      },
+      "StudentTurnDto": {
+        "type": "object",
+        "properties": {
+          "assignmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "contentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "contentTitle": {
+            "type": "string"
+          },
+          "startsAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "endsAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "upcoming",
+              "active",
+              "ended",
+              "cancelled"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "not_started",
+              "in_progress",
+              "passed"
+            ]
+          },
+          "attemptCount": {
+            "type": "number"
+          },
+          "bestStars": {
+            "type": "number"
+          },
+          "points": {
+            "type": "number"
+          },
+          "lastAttemptAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "feedbackRating": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "assignmentId",
+          "contentId",
+          "contentTitle",
+          "startsAt",
+          "endsAt",
+          "phase",
+          "status",
+          "attemptCount",
+          "bestStars",
+          "points",
+          "lastAttemptAt",
+          "feedbackRating"
+        ]
+      },
+      "StudentReportDto": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "classId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "className": {
+            "type": "string"
+          },
+          "turns": {
+            "description": "Only your own assignments in the class the student is in now, newest window first",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StudentTurnDto"
+            }
+          }
+        },
+        "required": [
+          "studentId",
+          "displayName",
+          "classId",
+          "className",
+          "turns"
+        ]
+      }
+    }
+  }
+}

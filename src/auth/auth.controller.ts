@@ -31,6 +31,7 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(204)
+  @ApiOperation({ summary: 'Revoke the current session' })
   @ApiBearerAuth()
   @ApiNoContentResponse({ description: 'Current session revoked' })
   @ApiUnauthorizedResponse({ description: 'Missing, expired or revoked access token' })
@@ -38,6 +39,7 @@ export class AuthController {
 
   @Post('logout-all')
   @HttpCode(204)
+  @ApiOperation({ summary: 'Revoke every session of the current account' })
   @ApiBearerAuth()
   @ApiNoContentResponse({ description: 'All sessions for the current account revoked' })
   @ApiUnauthorizedResponse({ description: 'Missing, expired or revoked access token' })

@@ -14,6 +14,7 @@
     "migration:show:prod": "typeorm migration:show -d dist/database/data-source.js",
     "migration:revert:prod": "typeorm migration:revert -d dist/database/data-source.js",
     "test:db": "node scripts/test-database.cjs",
+    "docs:export": "node scripts/export-openapi.cjs",
     "admin:bootstrap": "node scripts/bootstrap-admin.cjs",
     "mail:dev": "node scripts/mail-dev.cjs"
   },

@@ -42,7 +42,7 @@ export class CreateVersionDto {
 export class UpdateVersionDto {
   @ApiPropertyOptional({ maxLength: 200 }) @IsOptional() @Transform(trim) @IsString() @Length(1, 200) @Matches(unityPattern)
   unityId?: string;
-  @ApiPropertyOptional({ type: Object }) @IsOptional() @IsObject()
+  @ApiPropertyOptional({ type: Object, description: 'JSON object, at most 16 KB', example: { scene: 'Multiply2' } }) @IsOptional() @IsObject()
   configuration?: Record<string, unknown>;
 }
 

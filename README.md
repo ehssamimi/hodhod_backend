@@ -222,3 +222,15 @@ Timezone must be a named timezone accepted by the runtime (for example Asia/Tehr
 | GET | /admin/audit | سابقهٔ تغییرات حساس با عامل و زمان سرور؛ فیلتر `actorId`, `entityType`, `entityId`, `action`, `limit`, `offset` |
 
 اقدام‌های ثبت‌شده در همان تراکنش تغییر: `content.create`, `content.update`, `content.version.add`, `content.version.update`, `content.publish`, `content.unpublish`, `content.archive`, `adventure.path.replace`, `rule.create` (هر کدام با جزئیات مانند نسخه، وضعیت قبلی، ستاره‌ها). درخواست تکراری بی‌تغییر و تغییر ناموفق سابقه نمی‌سازد؛ تغییر نقش کاربران در `role_change_audit` جداگانه ثبت می‌شود.
+
+## سه صفحهٔ Swagger / OpenAPI (BE-24)
+
+| صفحه | JSON |
+| --- | --- |
+| `/docs/student` | `/docs/student/openapi.json` |
+| `/docs/teacher` | `/docs/teacher/openapi.json` |
+| `/docs/admin` | `/docs/admin/openapi.json` |
+
+هر endpoint فقط در صفحهٔ مصرف‌کنندهٔ خودش می‌آید؛ احراز هویت، `/me` و `/health` مشترک‌اند. فهرست ماژول‌های هر صفحه فقط در [src/swagger-modules.ts](src/swagger-modules.ts) است و هر ماژول جدید باید همان‌جا در صفحهٔ خودش ثبت شود. تست قرارداد (`npm run test:db`) روی API واقعی بررسی می‌کند که هر عملیات summary، برچسب، پاسخ موفق با schema، `security: bearer` و پاسخ 401 (و 403 برای معلم/مدیر، 400 برای مسیرهای پارامتردار) و مثال/توضیح برای فیلدهای بدنه دارد و هیچ مسیری در صفحهٔ اشتباه نیست. فایل‌های OpenAPI برای کلاینت‌ها در [docs/openapi/](docs/openapi/) نگهداری می‌شوند و با `npm run docs:export` از API واقعی بازتولید می‌شوند.
+
+**دسترسی به مستندات:** در `NODE_ENV=development` باز است. در هر محیط دیگر پیش‌فرض خاموش است؛ برای روشن‌کردن باید `DOCS_ENABLED=true` و `DOCS_USER` و `DOCS_PASSWORD` (حداقل ۱۶ نویسه) تنظیم شود و صفحات پشت HTTP Basic می‌مانند؛ بدون اعتبارنامهٔ کافی صفحات روشن نمی‌شوند. مستندات جایگزین کنترل دسترسی نیست؛ نقش‌ها همچنان در خود API اعمال می‌شوند.

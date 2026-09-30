@@ -1,5 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
-import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Public } from './auth/security';
 
 @ApiTags('Shared / Health')
@@ -7,6 +7,7 @@ import { Public } from './auth/security';
 export class HealthController {
   @Public()
   @Get()
+  @ApiOperation({ summary: 'Liveness check: the process is up' })
   @ApiOkResponse({ schema: { type: 'object', properties: { status: { type: 'string', example: 'ok' } } } })
   health() { return { status: 'ok' }; }
 }

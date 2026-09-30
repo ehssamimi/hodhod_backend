@@ -1,5 +1,5 @@
 import { Controller, Get, Module } from '@nestjs/common';
-import { ApiBearerAuth, ApiOkResponse, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/security';
 import { ProfileDto, profileOf } from './user.dto';
 import { User } from './user.entity';
@@ -10,6 +10,7 @@ import { User } from './user.entity';
 @Controller('me')
 export class ProfileController {
   @Get()
+  @ApiOperation({ summary: 'Get your account: role, display name, avatar and timezone' })
   @ApiOkResponse({ type: ProfileDto, description: 'Current account only; identity comes from the verified token' })
   getProfile(@CurrentUser() user: User): ProfileDto { return profileOf(user); }
 }

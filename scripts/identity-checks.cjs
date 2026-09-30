@@ -51,8 +51,7 @@ module.exports = async function identityChecks(dataSource) {
     .overrideProvider(DataSource).useValue(dataSource).compile();
   const app = testing.createNestApplication();
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
-  setupSwagger(app, { student: [AppModule,AuthModule,ProfileModule,StudentProfileModule,StudentClassesModule,StudentContentModule,StudentAdventureModule,StudentAssignmentsModule,AttemptsModule,StudentFeedbackModule,StudentStreakModule,StudentLeaderboardsModule], teacher: [AppModule,AuthModule,ProfileModule,ClassesModule,TeacherContentModule,TeacherAssignmentsModule,TeacherFeedbackModule,TeacherReportsModule],
-    admin: [AppModule,AuthModule,ProfileModule,AdminUsersModule,AdminContentModule,AdminFeedbackModule,AdminSuspiciousModule,AdminOverviewModule] });
+  setupSwagger(app, require('../src/swagger-modules').audienceModules());
   try {
     await app.listen(0, '127.0.0.1');
     const port = app.getHttpServer().address().port;
@@ -62,6 +61,7 @@ module.exports = async function identityChecks(dataSource) {
         body: body === undefined ? undefined : JSON.stringify(body) });
       return { status: response.status, data: await response.json() };
     }
+    request.baseUrl = 'http://127.0.0.1:' + port;
     async function login(email) {
       const r = await request('/auth/verify-code', { method: 'POST', body: { email,code:'11111' } });
       assert.equal(r.status, 201, JSON.stringify(r.data));
@@ -157,6 +157,7 @@ module.exports = async function identityChecks(dataSource) {
     await require('./streak-checks.cjs')({ source:dataSource,request,login,teacher,admin });
     await require('./leaderboard-checks.cjs')({ source:dataSource,request,login,teacher,admin });
     await require('./admin-overview-checks.cjs')({ source:dataSource,request,login,teacher,admin });
+    await require('./api-contract-checks.cjs')({ source:dataSource,request,login,teacher,admin });
 
     // Failure after the UPDATE must roll back both the role and token version.
     await dataSource.query(`CREATE FUNCTION test_reject_audit() RETURNS trigger LANGUAGE plpgsql AS $$

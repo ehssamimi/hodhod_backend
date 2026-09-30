@@ -1,0 +1,2398 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "HealthController_health",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Liveness check: the process is up",
+        "tags": [
+          "Shared / Health"
+        ]
+      }
+    },
+    "/auth/request-code": {
+      "post": {
+        "operationId": "AuthController_requestCode",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestCodeResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid email or unexpected fields"
+          },
+          "429": {
+            "description": "Email or IP request limit exceeded"
+          },
+          "503": {
+            "description": "SMTP unavailable or unconfigured"
+          }
+        },
+        "summary": "Request a time-limited email sign-in code",
+        "tags": [
+          "Shared / Authentication"
+        ]
+      }
+    },
+    "/auth/verify-code": {
+      "post": {
+        "operationId": "AuthController_verifyCode",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyCodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyCodeResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid email/code format or unexpected fields"
+          },
+          "401": {
+            "description": "Incorrect, expired, consumed or locked verification code"
+          },
+          "429": {
+            "description": "Email or IP verification limit exceeded"
+          }
+        },
+        "summary": "Consume a one-time code and create a revocable session",
+        "tags": [
+          "Shared / Authentication"
+        ]
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "Current session revoked"
+          },
+          "401": {
+            "description": "Missing, expired or revoked access token"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Revoke the current session",
+        "tags": [
+          "Shared / Authentication"
+        ]
+      }
+    },
+    "/auth/logout-all": {
+      "post": {
+        "operationId": "AuthController_logoutAll",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "All sessions for the current account revoked"
+          },
+          "401": {
+            "description": "Missing, expired or revoked access token"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Revoke every session of the current account",
+        "tags": [
+          "Shared / Authentication"
+        ]
+      }
+    },
+    "/me": {
+      "get": {
+        "operationId": "ProfileController_getProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Current account only; identity comes from the verified token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired or revoked access token"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get your account: role, display name, avatar and timezone",
+        "tags": [
+          "Shared / Profile"
+        ]
+      }
+    },
+    "/admin/users/{id}/role": {
+      "patch": {
+        "operationId": "AdminUsersController_changeRole",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeRoleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID, role, reason or unexpected fields"
+          },
+          "401": {
+            "description": "Missing, expired or revoked access token"
+          },
+          "403": {
+            "description": "Admin role required"
+          },
+          "404": {
+            "description": "User not found"
+          },
+          "409": {
+            "description": "The last admin cannot be demoted"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change a user role, audit the change and revoke existing tokens",
+        "tags": [
+          "Admin / Users"
+        ]
+      }
+    },
+    "/admin/content": {
+      "get": {
+        "operationId": "AdminContentController_list",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "published",
+                "archived"
+              ]
+            }
+          },
+          {
+            "name": "kind",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "adventure",
+                "practice",
+                "both"
+              ]
+            }
+          },
+          {
+            "name": "subject",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 120,
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Case-insensitive title search",
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "offset",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "default": 0,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminContentSummaryDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID, field, filter or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Admin role required"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List content in every status, newest first",
+        "tags": [
+          "Admin / Content"
+        ]
+      },
+      "post": {
+        "operationId": "AdminContentController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateContentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminContentDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID, field, filter or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Admin role required"
+          },
+          "409": {
+            "description": "Unity ID already mapped to another content item"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a draft content item with its first (unreleased) version and Unity mapping",
+        "tags": [
+          "Admin / Content"
+        ]
+      }
+    },
+    "/admin/content/{id}": {
+      "get": {
+        "operationId": "AdminContentController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminContentDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID, field, filter or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Admin role required"
+          },
+          "404": {
+            "description": "Content not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get one content item with all versions",
+        "tags": [
+          "Admin / Content"
+        ]
+      },
+      "patch": {
+        "operationId": "AdminContentController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateContentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminContentDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID, field, filter or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Admin role required"
+          },
+          "404": {
+            "description": "Content not found"
+          },
+          "409": {
+            "description": "Kind change would break an Adventure stage or assignment"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Edit title, subject or kind; the stable ID never changes",
+        "tags": [
+          "Admin / Content"
+        ]
+      }
+    },
+    "/admin/content/{id}/versions": {
+      "post": {
+        "description": "Version numbers are assigned by the server. Students keep seeing the last released version until this one is released.",
+        "operationId": "AdminContentController_addVersion",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateVersionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminContentDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID, field, filter or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Admin role required"
+          },
+          "404": {
+            "description": "Content not found"
+          },
+          "409": {
+            "description": "Unity ID already mapped to another content item"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add the next unreleased version with a Unity mapping",
+        "tags": [
+          "Admin / Content"
+        ]
+      }
+    },
+    "/admin/content/{id}/versions/{version}": {
+      "patch": {
+        "description": "Released versions are immutable (also enforced by the database).",
+        "operationId": "AdminContentController_updateVersion",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "version",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateVersionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminContentDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID, field, filter or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Admin role required"
+          },
+          "404": {
+            "description": "Content or version not found"
+          },
+          "409": {
+            "description": "Version is released, or Unity ID is mapped elsewhere"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Correct an unreleased version",
+        "tags": [
+          "Admin / Content"
+        ]
+      }
+    },
+    "/admin/content/{id}/versions/{version}/publish": {
+      "post": {
+        "description": "Repeating the call keeps the original release time.",
+        "operationId": "AdminContentController_publish",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "version",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminContentDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID, field, filter or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Admin role required"
+          },
+          "404": {
+            "description": "Content or version not found"
+          },
+          "409": {
+            "description": "A newer version is already released"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Release a version at the server time and publish the item",
+        "tags": [
+          "Admin / Content"
+        ]
+      }
+    },
+    "/admin/content/{id}/unpublish": {
+      "post": {
+        "operationId": "AdminContentController_unpublish",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminContentDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID, field, filter or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Admin role required"
+          },
+          "404": {
+            "description": "Content not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Hide the item from clients again (back to draft); history is kept",
+        "tags": [
+          "Admin / Content"
+        ]
+      }
+    },
+    "/admin/content/{id}/archive": {
+      "post": {
+        "operationId": "AdminContentController_archive",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminContentDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID, field, filter or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Admin role required"
+          },
+          "404": {
+            "description": "Content not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Archive the item; nothing is deleted",
+        "tags": [
+          "Admin / Content"
+        ]
+      }
+    },
+    "/admin/adventure/path": {
+      "get": {
+        "operationId": "AdminAdventureController_get",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdventurePathDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Admin role required"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get the whole Adventure path in order, including unpublished content",
+        "tags": [
+          "Admin / Adventure path"
+        ]
+      },
+      "put": {
+        "description": "Send every stage in play order; positions become 1..n. A prerequisite must appear earlier, so cycles are impossible. Adventure or both content only. Omitted stages are removed unless students already have progress there.",
+        "operationId": "AdminAdventureController_replace",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplacePathDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdventurePathDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Duplicate stage, unknown or practice-only content, prerequisite not earlier, unlockStars above the prerequisite star ceiling"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Admin role required"
+          },
+          "409": {
+            "description": "A removed stage already has student progress"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Replace the Adventure path (order, prerequisites, unlock stars)",
+        "tags": [
+          "Admin / Adventure path"
+        ]
+      }
+    },
+    "/admin/rules": {
+      "get": {
+        "operationId": "AdminRulesController_list",
+        "parameters": [
+          {
+            "name": "contentId",
+            "required": false,
+            "in": "query",
+            "description": "Only rules for this content",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "scope",
+            "required": false,
+            "in": "query",
+            "description": "global lists only the global rule history",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "global"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "offset",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "default": 0,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RuleDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID, stars, filter or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Admin role required"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List rule versions, newest first",
+        "tags": [
+          "Admin / Scoring rules"
+        ]
+      },
+      "post": {
+        "description": "Rules are append-only: this never edits earlier versions or recorded points, and the database rejects UPDATE/DELETE on rules and the point ledger. Defaults when nothing is stored: 5 max stars, 3 to pass.",
+        "operationId": "AdminRulesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRuleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID, stars, filter or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Admin role required"
+          },
+          "404": {
+            "description": "Content not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add the next rule version for one content item or globally",
+        "tags": [
+          "Admin / Scoring rules"
+        ]
+      }
+    },
+    "/admin/rules/effective": {
+      "get": {
+        "operationId": "AdminRulesController_effective",
+        "parameters": [
+          {
+            "name": "contentId",
+            "required": false,
+            "in": "query",
+            "description": "Omit for the global rule",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EffectiveRuleDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID, stars, filter or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Admin role required"
+          },
+          "404": {
+            "description": "Content not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Resolve the rule that applies now: content rule, else global rule, else defaults",
+        "tags": [
+          "Admin / Scoring rules"
+        ]
+      }
+    },
+    "/admin/rules/{id}": {
+      "get": {
+        "operationId": "AdminRulesController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID, stars, filter or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Admin role required"
+          },
+          "404": {
+            "description": "Rule not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get one rule version",
+        "tags": [
+          "Admin / Scoring rules"
+        ]
+      }
+    },
+    "/admin/feedback": {
+      "get": {
+        "operationId": "AdminFeedbackController_list",
+        "parameters": [
+          {
+            "name": "contentId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "offset",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "default": 0,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackListDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid filter, UUID or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Admin role required"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "All game ratings with an aggregate summary; filter by contentId",
+        "tags": [
+          "Admin / Feedback"
+        ]
+      }
+    },
+    "/admin/suspicious-events": {
+      "get": {
+        "description": "Traces only; the server cannot prove that a star result really came from playing the game in Unity. Rejections do not store an attempt; implausible_duration events belong to an accepted attempt.",
+        "operationId": "AdminSuspiciousController_list",
+        "parameters": [
+          {
+            "name": "studentId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "reason",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "stage_locked",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "offset",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "default": 0,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SuspiciousEventDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid filter or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Admin role required"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List rejected or implausible attempt submissions, newest first",
+        "tags": [
+          "Admin / Attempt review"
+        ]
+      }
+    },
+    "/admin/overview": {
+      "get": {
+        "operationId": "AdminOverviewController_get",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OverviewDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Admin role required"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "System overview: users, classes, publication status, assignments, attempts and aggregated game feedback",
+        "tags": [
+          "Admin / Overview"
+        ]
+      }
+    },
+    "/admin/audit": {
+      "get": {
+        "description": "Newest first, append-only. Role changes are recorded separately in role_change_audit.",
+        "operationId": "AdminOverviewController_audit",
+        "parameters": [
+          {
+            "name": "actorId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "entityType",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "content",
+              "type": "string"
+            }
+          },
+          {
+            "name": "entityId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "action",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "content.publish",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "offset",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "default": 0,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AuditEntryDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid filter or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Admin role required"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "History of sensitive content, Adventure path and scoring-rule changes with the acting admin and server time",
+        "tags": [
+          "Admin / Overview"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Hodhod admin API",
+    "description": "Implemented endpoints only. Email sign-in and revocable Bearer sessions.",
+    "version": "0.1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
+    "schemas": {
+      "EmailDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "student@example.com"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "RequestCodeResponseDto": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "If delivery succeeds, a sign-in code will arrive shortly"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "VerifyCodeDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "student@example.com"
+          },
+          "code": {
+            "type": "string",
+            "example": "083719",
+            "description": "Six-digit emailed code; 11111 only in explicitly enabled development mode"
+          }
+        },
+        "required": [
+          "email",
+          "code"
+        ]
+      },
+      "AuthUserDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "example": "student@example.com"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "student",
+              "teacher",
+              "admin"
+            ]
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "avatarId": {
+            "type": "string",
+            "nullable": true
+          },
+          "timezone": {
+            "type": "string",
+            "example": "Asia/Tehran"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "role",
+          "displayName",
+          "avatarId",
+          "timezone",
+          "createdAt"
+        ]
+      },
+      "VerifyCodeResponseDto": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "description": "JWT access token"
+          },
+          "user": {
+            "$ref": "#/components/schemas/AuthUserDto"
+          },
+          "isNewUser": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "accessToken",
+          "user",
+          "isNewUser"
+        ]
+      },
+      "ProfileDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "example": "student@example.com"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "student",
+              "teacher",
+              "admin"
+            ]
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "avatarId": {
+            "type": "string",
+            "nullable": true
+          },
+          "timezone": {
+            "type": "string",
+            "example": "Asia/Tehran"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "role",
+          "displayName",
+          "avatarId",
+          "timezone",
+          "createdAt"
+        ]
+      },
+      "ChangeRoleDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "student",
+              "teacher",
+              "admin"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "role"
+        ]
+      },
+      "AdminContentSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "grade": {
+            "type": "number",
+            "example": 3
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "adventure",
+              "practice",
+              "both"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "archived"
+            ]
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "latestVersion": {
+            "type": "number",
+            "example": 2,
+            "description": "Highest version number"
+          },
+          "currentVersion": {
+            "type": "number",
+            "nullable": true,
+            "description": "Highest released version; students see this one when status is published"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "subject",
+          "grade",
+          "kind",
+          "status",
+          "createdAt",
+          "latestVersion",
+          "currentVersion"
+        ]
+      },
+      "CreateContentDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "ضرب اعداد دو رقمی",
+            "maxLength": 200
+          },
+          "subject": {
+            "type": "string",
+            "example": "ضرب",
+            "maxLength": 120
+          },
+          "grade": {
+            "type": "number",
+            "default": 3,
+            "minimum": 1,
+            "maximum": 12
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "adventure",
+              "practice",
+              "both"
+            ]
+          },
+          "unityId": {
+            "type": "string",
+            "example": "math3.multiply.two-digit",
+            "maxLength": 200,
+            "description": "Unity identifier for the first version; unique across content items"
+          },
+          "configuration": {
+            "type": "object",
+            "example": {
+              "scene": "Multiply2"
+            },
+            "description": "JSON object, at most 16 KB"
+          }
+        },
+        "required": [
+          "title",
+          "subject",
+          "kind",
+          "unityId"
+        ]
+      },
+      "ContentVersionDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "example": 1
+          },
+          "unityId": {
+            "type": "string",
+            "example": "math3.multiply.two-digit"
+          },
+          "configuration": {
+            "type": "object"
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Server time of release; null while unreleased"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "unityId",
+          "configuration",
+          "publishedAt",
+          "createdAt"
+        ]
+      },
+      "AdminContentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "grade": {
+            "type": "number",
+            "example": 3
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "adventure",
+              "practice",
+              "both"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "archived"
+            ]
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "latestVersion": {
+            "type": "number",
+            "example": 2,
+            "description": "Highest version number"
+          },
+          "currentVersion": {
+            "type": "number",
+            "nullable": true,
+            "description": "Highest released version; students see this one when status is published"
+          },
+          "versions": {
+            "description": "All versions, oldest first",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContentVersionDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "subject",
+          "grade",
+          "kind",
+          "status",
+          "createdAt",
+          "latestVersion",
+          "currentVersion",
+          "versions"
+        ]
+      },
+      "UpdateContentDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "subject": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "adventure",
+              "practice",
+              "both"
+            ],
+            "description": "Rejected while an Adventure stage or assignment needs the current kind"
+          }
+        }
+      },
+      "CreateVersionDto": {
+        "type": "object",
+        "properties": {
+          "unityId": {
+            "type": "string",
+            "example": "math3.multiply.two-digit.v2",
+            "maxLength": 200
+          },
+          "configuration": {
+            "type": "object",
+            "description": "JSON object, at most 16 KB"
+          }
+        },
+        "required": [
+          "unityId"
+        ]
+      },
+      "UpdateVersionDto": {
+        "type": "object",
+        "properties": {
+          "unityId": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "configuration": {
+            "type": "object",
+            "description": "JSON object, at most 16 KB",
+            "example": {
+              "scene": "Multiply2"
+            }
+          }
+        }
+      },
+      "PathStageDto": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "type": "number",
+            "example": 1
+          },
+          "contentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "adventure",
+              "practice",
+              "both"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "archived"
+            ]
+          },
+          "prerequisiteContentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "unlockStars": {
+            "type": "number",
+            "example": 3
+          }
+        },
+        "required": [
+          "position",
+          "contentId",
+          "title",
+          "kind",
+          "status",
+          "prerequisiteContentId",
+          "unlockStars"
+        ]
+      },
+      "AdventurePathDto": {
+        "type": "object",
+        "properties": {
+          "stages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PathStageDto"
+            }
+          }
+        },
+        "required": [
+          "stages"
+        ]
+      },
+      "StageInputDto": {
+        "type": "object",
+        "properties": {
+          "contentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "prerequisiteContentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Must appear earlier in the list"
+          },
+          "unlockStars": {
+            "type": "number",
+            "default": 3,
+            "minimum": 0,
+            "maximum": 10,
+            "description": "Best stars needed on the prerequisite"
+          }
+        },
+        "required": [
+          "contentId"
+        ]
+      },
+      "ReplacePathDto": {
+        "type": "object",
+        "properties": {
+          "stages": {
+            "description": "Complete path in play order; positions become 1..n",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StageInputDto"
+            }
+          }
+        },
+        "required": [
+          "stages"
+        ]
+      },
+      "RuleDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "contentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "version": {
+            "type": "number",
+            "example": 1,
+            "description": "Increases by one within the scope"
+          },
+          "maxStars": {
+            "type": "number",
+            "example": 5
+          },
+          "passStars": {
+            "type": "number",
+            "example": 3
+          },
+          "definition": {
+            "type": "object"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "contentId",
+          "version",
+          "maxStars",
+          "passStars",
+          "definition",
+          "createdAt"
+        ]
+      },
+      "CreateRuleDto": {
+        "type": "object",
+        "properties": {
+          "contentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Omit or null for the global rule"
+          },
+          "maxStars": {
+            "type": "number",
+            "example": 5,
+            "minimum": 1,
+            "maximum": 10
+          },
+          "passStars": {
+            "type": "number",
+            "example": 3,
+            "minimum": 0,
+            "maximum": 10,
+            "description": "Must not exceed maxStars"
+          },
+          "definition": {
+            "type": "object",
+            "example": {
+              "starPoints": {
+                "3": 20,
+                "4": 30,
+                "5": 40
+              }
+            },
+            "description": "Rule snapshot used by scoring; JSON object, at most 16 KB. Point values are a product decision."
+          }
+        },
+        "required": [
+          "maxStars",
+          "passStars"
+        ]
+      },
+      "EffectiveRuleDto": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "content",
+              "global",
+              "default"
+            ],
+            "description": "default means no rule is stored: 5 max stars, 3 to pass"
+          },
+          "rule": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RuleDto"
+              }
+            ]
+          },
+          "maxStars": {
+            "type": "number",
+            "example": 5
+          },
+          "passStars": {
+            "type": "number",
+            "example": 3
+          }
+        },
+        "required": [
+          "source",
+          "rule",
+          "maxStars",
+          "passStars"
+        ]
+      },
+      "FeedbackSummaryDto": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "number",
+            "example": 12
+          },
+          "average": {
+            "type": "number",
+            "nullable": true,
+            "example": 3.25
+          },
+          "distribution": {
+            "type": "object",
+            "example": {
+              "1": 0,
+              "2": 1,
+              "3": 4,
+              "4": 7
+            },
+            "description": "Number of ratings per value 1 to 4"
+          }
+        },
+        "required": [
+          "count",
+          "average",
+          "distribution"
+        ]
+      },
+      "FeedbackItemDto": {
+        "type": "object",
+        "properties": {
+          "contentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "rating": {
+            "type": "number",
+            "example": 4
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contentId",
+          "title",
+          "studentId",
+          "displayName",
+          "rating",
+          "createdAt"
+        ]
+      },
+      "FeedbackListDto": {
+        "type": "object",
+        "properties": {
+          "summary": {
+            "description": "Over all matching ratings, not just this page",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FeedbackSummaryDto"
+              }
+            ]
+          },
+          "items": {
+            "description": "Newest first. Never contains email addresses.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeedbackItemDto"
+            }
+          }
+        },
+        "required": [
+          "summary",
+          "items"
+        ]
+      },
+      "SuspiciousEventDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "attemptId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Set only when the attempt was accepted and stored (implausible_duration)"
+          },
+          "contentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "context": {
+            "type": "string",
+            "nullable": true
+          },
+          "assignmentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "example": "stage_locked",
+            "description": "stars_above_max, not_on_adventure_map, stage_locked, assignment_not_addressed, content_mismatch, assignment_cancelled, assignment_not_started, window_closed, content_unavailable, attempt_id_other_student, attempt_id_data_mismatch, rate_limited, implausible_duration"
+          },
+          "details": {
+            "type": "object"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "studentId",
+          "attemptId",
+          "contentId",
+          "context",
+          "assignmentId",
+          "reason",
+          "details",
+          "createdAt"
+        ]
+      },
+      "GameSummaryDto": {
+        "type": "object",
+        "properties": {
+          "contentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "archived"
+            ]
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "adventure",
+              "practice",
+              "both"
+            ]
+          },
+          "currentVersion": {
+            "type": "number",
+            "nullable": true,
+            "description": "Highest released version"
+          },
+          "attempts": {
+            "type": "number",
+            "example": 40
+          },
+          "feedbackCount": {
+            "type": "number",
+            "example": 12
+          },
+          "feedbackAverage": {
+            "type": "number",
+            "nullable": true,
+            "example": 3.25,
+            "description": "1-4 interest average; null when nobody rated the game"
+          },
+          "feedbackDistribution": {
+            "type": "object",
+            "example": {
+              "1": 0,
+              "2": 1,
+              "3": 4,
+              "4": 7
+            }
+          }
+        },
+        "required": [
+          "contentId",
+          "title",
+          "status",
+          "kind",
+          "currentVersion",
+          "attempts",
+          "feedbackCount",
+          "feedbackAverage",
+          "feedbackDistribution"
+        ]
+      },
+      "OverviewDto": {
+        "type": "object",
+        "properties": {
+          "usersByRole": {
+            "type": "object",
+            "example": {
+              "student": 120,
+              "teacher": 6,
+              "admin": 2
+            }
+          },
+          "classesByStatus": {
+            "type": "object",
+            "example": {
+              "active": 8,
+              "archived": 1
+            }
+          },
+          "contentByStatus": {
+            "type": "object",
+            "example": {
+              "draft": 2,
+              "published": 30,
+              "archived": 1
+            }
+          },
+          "assignmentsByPhase": {
+            "type": "object",
+            "example": {
+              "upcoming": 1,
+              "active": 3,
+              "ended": 10,
+              "cancelled": 0
+            }
+          },
+          "attemptsTotal": {
+            "type": "number",
+            "example": 500
+          },
+          "attemptsLast7Days": {
+            "type": "number",
+            "example": 60,
+            "description": "Attempts received in the last 7 days"
+          },
+          "suspiciousLast7Days": {
+            "type": "number",
+            "example": 4,
+            "description": "Suspicious events in the last 7 days (see /admin/suspicious-events)"
+          },
+          "games": {
+            "description": "Every game with publication status and aggregated feedback, most attempted first (no student identities)",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GameSummaryDto"
+            }
+          }
+        },
+        "required": [
+          "usersByRole",
+          "classesByStatus",
+          "contentByStatus",
+          "assignmentsByPhase",
+          "attemptsTotal",
+          "attemptsLast7Days",
+          "suspiciousLast7Days",
+          "games"
+        ]
+      },
+      "AuditEntryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "actorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "actorName": {
+            "type": "string",
+            "nullable": true
+          },
+          "action": {
+            "type": "string",
+            "example": "content.publish",
+            "description": "content.create, content.update, content.version.add, content.version.update, content.publish, content.unpublish, content.archive, adventure.path.replace, rule.create"
+          },
+          "entityType": {
+            "type": "string",
+            "example": "content"
+          },
+          "entityId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "details": {
+            "type": "object"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Server time"
+          }
+        },
+        "required": [
+          "id",
+          "actorId",
+          "actorName",
+          "action",
+          "entityType",
+          "entityId",
+          "details",
+          "createdAt"
+        ]
+      }
+    }
+  }
+}
