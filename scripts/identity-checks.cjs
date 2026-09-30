@@ -157,6 +157,7 @@ module.exports = async function identityChecks(dataSource) {
     await require('./streak-checks.cjs')({ source:dataSource,request,login,teacher,admin });
     await require('./leaderboard-checks.cjs')({ source:dataSource,request,login,teacher,admin });
     await require('./admin-overview-checks.cjs')({ source:dataSource,request,login,teacher,admin });
+    await require('./scenario-checks.cjs')({ source:dataSource,request,login,teacher,admin });
     await require('./api-contract-checks.cjs')({ source:dataSource,request,login,teacher,admin });
 
     // Failure after the UPDATE must roll back both the role and token version.
