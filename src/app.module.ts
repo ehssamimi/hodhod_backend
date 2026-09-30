@@ -3,6 +3,7 @@ import { StudentClassesModule } from './classes/student-classes.module';
 import { StudentContentModule, TeacherContentModule } from './content/content.module';
 import { StudentAdventureModule } from './adventure/adventure.module';
 import { AdminContentModule } from './admin-content/admin-content.module';
+import { TeacherAssignmentsModule } from './assignments/assignments.module';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
@@ -13,7 +14,7 @@ import { AdminUsersModule } from './users/admin-users.module';
 import { databaseOptions } from './database/data-source';
 
 @Module({
-  imports: [TypeOrmModule.forRoot(databaseOptions()), AuthModule, ProfileModule, AdminUsersModule, StudentProfileModule, ClassesModule, StudentClassesModule, StudentContentModule, TeacherContentModule, StudentAdventureModule, AdminContentModule],
+  imports: [TypeOrmModule.forRoot(databaseOptions()), AuthModule, ProfileModule, AdminUsersModule, StudentProfileModule, ClassesModule, StudentClassesModule, StudentContentModule, TeacherContentModule, StudentAdventureModule, AdminContentModule, TeacherAssignmentsModule],
   controllers: [HealthController],
 })
 export class AppModule {}

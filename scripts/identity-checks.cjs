@@ -12,6 +12,7 @@ module.exports = async function identityChecks(dataSource) {
   const { ClassesModule } = require('../src/classes/classes.module');
   const { StudentAdventureModule } = require('../src/adventure/adventure.module');
   const { AdminContentModule } = require('../src/admin-content/admin-content.module');
+  const { TeacherAssignmentsModule } = require('../src/assignments/assignments.module');
   const { StudentClassesModule } = require('../src/classes/student-classes.module');
   const { StudentContentModule, TeacherContentModule } = require('../src/content/content.module');
   const { StudentProfileModule } = require('../src/users/student-profile.module');
@@ -42,7 +43,7 @@ module.exports = async function identityChecks(dataSource) {
     .overrideProvider(DataSource).useValue(dataSource).compile();
   const app = testing.createNestApplication();
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
-  setupSwagger(app, { student: [AppModule,AuthModule,ProfileModule,StudentProfileModule,StudentClassesModule,StudentContentModule,StudentAdventureModule], teacher: [AppModule,AuthModule,ProfileModule,ClassesModule,TeacherContentModule],
+  setupSwagger(app, { student: [AppModule,AuthModule,ProfileModule,StudentProfileModule,StudentClassesModule,StudentContentModule,StudentAdventureModule], teacher: [AppModule,AuthModule,ProfileModule,ClassesModule,TeacherContentModule,TeacherAssignmentsModule],
     admin: [AppModule,AuthModule,ProfileModule,AdminUsersModule,AdminContentModule] });
   try {
     await app.listen(0, '127.0.0.1');
@@ -138,6 +139,7 @@ module.exports = async function identityChecks(dataSource) {
     await require('./content-checks.cjs')({ source:dataSource,request,login,teacher,admin });
     await require('./adventure-checks.cjs')({ source:dataSource,request,login,teacher,admin });
     await require('./admin-content-checks.cjs')({ source:dataSource,request,login,teacher,admin });
+    await require('./assignments-checks.cjs')({ source:dataSource,request,login,teacher,admin });
 
     // Failure after the UPDATE must roll back both the role and token version.
     await dataSource.query(`CREATE FUNCTION test_reject_audit() RETURNS trigger LANGUAGE plpgsql AS $$
@@ -186,6 +188,9 @@ module.exports = async function identityChecks(dataSource) {
       assert.equal(Boolean(doc.data.paths['/content/{id}']), audience === 'student');
       for (const path of ['/admin/content','/admin/content/{id}/versions/{version}/publish','/admin/adventure/path','/admin/rules','/admin/rules/effective']) {
         assert.equal(Boolean(doc.data.paths[path]), audience === 'admin', path);
+      }
+      for (const path of ['/teacher/assignments','/teacher/assignments/{id}','/teacher/assignments/{id}/cancel']) {
+        assert.equal(Boolean(doc.data.paths[path]), audience === 'teacher', path);
       }
       assert.equal(Boolean(doc.data.paths['/adventure/map']), audience === 'student');
       assert.equal(Boolean(doc.data.paths['/teacher/content']), audience === 'teacher');

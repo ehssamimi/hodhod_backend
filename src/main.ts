@@ -3,6 +3,7 @@ import { StudentClassesModule } from './classes/student-classes.module';
 import { StudentContentModule, TeacherContentModule } from './content/content.module';
 import { StudentAdventureModule } from './adventure/adventure.module';
 import { AdminContentModule } from './admin-content/admin-content.module';
+import { TeacherAssignmentsModule } from './assignments/assignments.module';
 import 'dotenv/config';
 import 'reflect-metadata';
 import { ValidationPipe } from '@nestjs/common';
@@ -23,7 +24,7 @@ async function bootstrap() {
     const sharedModules = [AppModule, AuthModule, ProfileModule];
     setupSwagger(app, {
       student: [...sharedModules, StudentProfileModule, StudentClassesModule, StudentContentModule, StudentAdventureModule],
-      teacher: [...sharedModules, ClassesModule, TeacherContentModule],
+      teacher: [...sharedModules, ClassesModule, TeacherContentModule, TeacherAssignmentsModule],
       admin: [...sharedModules, AdminUsersModule, AdminContentModule],
     });
   }
