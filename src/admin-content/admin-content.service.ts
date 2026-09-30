@@ -267,7 +267,7 @@ export class AdminContentService {
     return this.write(actor, async manager => {
       if (contentId) await this.requireContent(manager, contentId);
       // A new version never edits an older one, so points already in the ledger keep their rule.
-      await this.lock(manager, 'rule:' + (contentId ?? 'global'));
+      await this.lock(manager, "rule:" + (contentId ?? "global"));
       const next = (await manager.query('SELECT COALESCE(max(version),0)+1 AS v FROM scoring_rules WHERE content_id IS NOT DISTINCT FROM $1', [contentId]))[0].v;
       const rows = await manager.query(`INSERT INTO scoring_rules(content_id,version,max_stars,pass_stars,definition) VALUES ($1,$2,$3,$4,$5)
         RETURNING id, content_id AS "contentId", version, max_stars AS "maxStars", pass_stars AS "passStars", definition, created_at AS "createdAt"`,

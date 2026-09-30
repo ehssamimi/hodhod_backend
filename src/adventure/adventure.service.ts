@@ -8,7 +8,7 @@ import { AdventureMapDto, AdventureStageDto } from './adventure.dto';
 // (a later rule change never re-locks earned progress). The check is one hop, so
 // a bad prerequisite chain cannot loop. Stars come from adventure_progress only:
 // teacher assignments are independent and never unlock anything.
-const mapSql = `SELECT s.content_id AS "contentId", s.position, s.prerequisite_content_id AS "prerequisiteContentId",
+export const mapSql = `SELECT s.content_id AS "contentId", s.position, s.prerequisite_content_id AS "prerequisiteContentId",
     s.unlock_stars AS "unlockStars", c.title, c.subject, v.unity_id AS "unityId", v.version,
     CASE WHEN s.prerequisite_content_id IS NULL OR COALESCE(pp.best_stars,0) >= s.unlock_stars OR p.first_passed_at IS NOT NULL
       THEN 'unlocked' ELSE 'locked' END AS status,
