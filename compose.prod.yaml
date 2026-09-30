@@ -1,0 +1,41 @@
+# Production-shaped stack. Secrets come from .env.production (never committed; see docs/DEPLOYMENT.md).
+# PostgreSQL publishes no port at all: it is reachable only by the api service on the private network.
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks: [backend]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: .
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      NODE_ENV: production
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      PORT: "3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Only the reverse proxy on this host may reach the API; terminate TLS there.
+    ports:
+      - "127.0.0.1:${API_PUBLISH_PORT:-3000}:3000"
+    networks: [backend]
+
+networks:
+  backend:
+
+volumes:
+  postgres_data:

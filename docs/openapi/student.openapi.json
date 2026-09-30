@@ -29,6 +29,38 @@
         ]
       }
     },
+    "/health/ready": {
+      "get": {
+        "description": "Use for load balancer and orchestrator probes. Reveals nothing beyond the status.",
+        "operationId": "HealthController_ready",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ready"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The database is unreachable"
+          }
+        },
+        "summary": "Readiness check: the database answers",
+        "tags": [
+          "Shared / Health"
+        ]
+      }
+    },
     "/auth/request-code": {
       "post": {
         "operationId": "AuthController_requestCode",

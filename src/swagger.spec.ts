@@ -2,12 +2,13 @@ import { Module } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { AuthController } from './auth/auth.controller';
 import { AuthService } from './auth/auth.service';
+import { DataSource } from 'typeorm';
 import { HealthController } from './health.controller';
 import { setupSwagger } from './swagger';
 
 @Module({
   controllers: [AuthController, HealthController],
-  providers: [{ provide: AuthService, useValue: {} }],
+  providers: [{ provide: AuthService, useValue: {} }, { provide: DataSource, useValue: {} }],
 })
 class TestApiModule {}
 
@@ -45,6 +46,7 @@ describe('Swagger documents', () => {
           '/auth/request-code',
           '/auth/verify-code',
           '/health',
+          '/health/ready',
         ]);
         expect(document.components.schemas.EmailDto).toBeDefined();
         expect(document.components.schemas.VerifyCodeDto).toBeDefined();

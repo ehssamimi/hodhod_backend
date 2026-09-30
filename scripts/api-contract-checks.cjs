@@ -13,7 +13,11 @@ module.exports = async ({ request }) => {
     docs[audience] = json.data;
   }
 
-  const shared = path => path === '/health' || path.startsWith('/auth/') || path === '/me';
+  const ready = await request('/health/ready');
+  assert.deepEqual([ready.status, ready.data], [200, { status: 'ready' }]);
+  assert.deepEqual((await request('/health')).data, { status: 'ok' });
+
+  const shared = path => path.startsWith('/health') || path.startsWith('/auth/') || path === '/me';
   const audienceOf = p => p.startsWith('/teacher/') ? 'teacher' : p.startsWith('/admin/') ? 'admin' : shared(p) ? 'shared' : 'student';
   const ops = [];
   for (const [audience, doc] of Object.entries(docs)) {
@@ -40,7 +44,7 @@ module.exports = async ({ request }) => {
   const problems = [];
   for (const { audience, p, method, op, doc } of ops) {
     const id = `${audience} ${method} ${p}`;
-    const publicRoute = p === '/health' || ['/auth/request-code', '/auth/verify-code'].includes(p);
+    const publicRoute = p.startsWith('/health') || ['/auth/request-code', '/auth/verify-code'].includes(p);
     if (!op.summary) problems.push(id + ': no summary');
     if (!op.tags?.length) problems.push(id + ': no tag');
     const codes = Object.keys(op.responses);
@@ -59,7 +63,7 @@ module.exports = async ({ request }) => {
     // Success bodies have schemas.
     for (const code of codes.filter(c => /^2/.test(c) && c !== '204')) {
       const content = op.responses[code].content?.['application/json'];
-      if (!content?.schema && !(p === '/health')) problems.push(`${id}: ${code} without a response schema`);
+      if (!content?.schema && !p.startsWith('/health')) problems.push(`${id}: ${code} without a response schema`);
     }
     // Request bodies: every property is described by an example, enum, format, constraint or description.
     const body = op.requestBody?.content?.['application/json']?.schema;

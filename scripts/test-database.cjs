@@ -11,6 +11,11 @@ const { User } = require('../src/users/user.entity');
 const { EmailAuthentication1790640000000 } = require('../src/database/migrations/1790640000000-EmailAuthentication');
 const { CloseArchivedMemberships1790726400000 } = require('../src/database/migrations/1790726400000-CloseArchivedMemberships');
 const { AdminAudit1791072000000 } = require('../src/database/migrations/1791072000000-AdminAudit');
+const { backup } = require('./db-backup.cjs');
+const { restore } = require('./db-restore.cjs');
+const os = require('node:os');
+const path = require('node:path');
+const fs = require('node:fs');
 const { SuspiciousEvents1790985600000 } = require('../src/database/migrations/1790985600000-SuspiciousEvents');
 const { AttemptResultSnapshot1790899200000 } = require('../src/database/migrations/1790899200000-AttemptResultSnapshot');
 const { ImmutableRuleHistory1790812800000 } = require('../src/database/migrations/1790812800000-ImmutableRuleHistory');
@@ -236,6 +241,33 @@ async function main() {
   console.log('PASS BE-06 historical archive repair, active membership retention and non-reopening rollback');
   await require('./identity-checks.cjs')(fresh);
   console.log('All BE-02 identity integration checks passed.');
+  // BE-23: backup and restore rehearsal on the database that all checks above filled with data.
+  if (!fresh.isInitialized) await fresh.initialize();
+  const file = path.join(os.tmpdir(), 'hodhod-rehearsal-' + randomUUID() + '.dump');
+  try {
+    await backup(container, 'be01_fresh', 'hodhod_test', file);
+    assert.ok(fs.statSync(file).size > 1000);
+    await admin.query('CREATE DATABASE "be23_restored"');
+    const restoredTables = await restore(container, 'be23_restored', 'hodhod_test', file);
+    await assert.rejects(() => restore(container, 'be23_restored', 'hodhod_test', file), /not empty/);
+    const restored = new DataSource({ ...databaseOptions(), host: connection.host, port, username: connection.user, password, database: 'be23_restored' });
+    await restored.initialize();
+    connections.push(restored);
+    const tables = (await fresh.query("SELECT table_name AS name FROM information_schema.tables WHERE table_schema='public' ORDER BY 1")).map(t => t.name);
+    assert.equal(restoredTables, tables.length);
+    for (const table of tables) {
+      const count = async db => Number((await db.query('SELECT count(*) AS n FROM "' + table + '"'))[0].n);
+      assert.equal(await count(restored), await count(fresh), 'row count of ' + table);
+    }
+    assert.ok((await fresh.query('SELECT count(*) AS n FROM point_ledger'))[0].n > 0);
+    assert.deepEqual(await restored.query('SELECT name FROM schema_migrations ORDER BY id'), await fresh.query('SELECT name FROM schema_migrations ORDER BY id'));
+    // Constraints and history triggers survive the restore.
+    await rejectsCode(() => restored.query('DELETE FROM point_ledger'), '23000');
+    await rejectsCode(() => restored.query('DELETE FROM users WHERE id IN (SELECT student_id FROM point_ledger LIMIT 1)'), '23503');
+    await restored.destroy();
+    console.log('PASS BE-23 backup and restore rehearsal: all tables, migration history, constraints and triggers restored into an empty database');
+  } finally { fs.rmSync(file, { force: true }); }
+
   const emailSource = await source('be03_full', false, true);
   assert.equal((await emailSource.runMigrations()).length, 8);
   await require('./email-auth-checks.cjs')(emailSource);
