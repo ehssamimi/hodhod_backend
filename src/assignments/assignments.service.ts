@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
 import { User } from '../users/user.entity';
-import { AssignmentDetailDto, AssignmentDto, CreateAssignmentDto, ListAssignmentsDto } from './assignments.dto';
+import { AssignmentDetailDto, AssignmentDto, AssignmentProgressDto, CreateAssignmentDto, ListAssignmentsDto } from './assignments.dto';
 
 const MAX_WINDOW_MS = 366 * 24 * 3600 * 1000;
 
@@ -91,6 +91,27 @@ export class AssignmentsService {
 
   get(actor: User, id: string): Promise<AssignmentDetailDto> {
     return this.authorized(actor, manager => this.detail(manager, actor.id, id));
+  }
+
+  // One turn = one assignment ID. Only rows keyed by this ID are read, so results from
+  // Adventure or from an earlier assignment of the same content can never appear here.
+  // Students who left the class are no longer visible to the teacher.
+  progress(actor: User, id: string): Promise<AssignmentProgressDto> {
+    return this.authorized(actor, async manager => {
+      const found = await manager.query(`SELECT a.class_id, ${phase} AS phase FROM assignments a WHERE a.id=$1 AND a.teacher_id=$2`, [id, actor.id]);
+      if (!found.length) throw new NotFoundException('Assignment not found');
+      const students = await manager.query(`SELECT r.student_id AS "studentId", u.display_name AS "displayName",
+          CASE WHEN p.first_passed_at IS NOT NULL THEN 'passed' WHEN COALESCE(p.attempt_count,0) > 0 THEN 'in_progress' ELSE 'not_started' END AS status,
+          COALESCE(p.best_stars,0) AS "bestStars", COALESCE(p.attempt_count,0) AS "attemptCount",
+          COALESCE((SELECT sum(l.delta) FROM point_ledger l WHERE l.assignment_id=r.assignment_id AND l.student_id=r.student_id),0)::int AS points,
+          p.first_passed_at AS "firstPassedAt", p.last_attempt_at AS "lastAttemptAt"
+        FROM assignment_recipients r
+        JOIN users u ON u.id=r.student_id
+        JOIN class_memberships m ON m.class_id=$2 AND m.student_id=r.student_id AND m.ended_at IS NULL
+        LEFT JOIN assignment_progress p ON p.assignment_id=r.assignment_id AND p.student_id=r.student_id
+        WHERE r.assignment_id=$1 ORDER BY u.display_name NULLS LAST, r.student_id`, [id, found[0].class_id]);
+      return { assignmentId: id, phase: found[0].phase, students };
+    });
   }
 
   // Cancelling keeps every record; it only stops the allocation from being open.

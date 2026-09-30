@@ -58,3 +58,20 @@ export class RecipientDto {
 export class AssignmentDetailDto extends AssignmentDto {
   @ApiProperty({ type: [RecipientDto], description: 'Explicit recipients fixed at creation' }) recipients!: RecipientDto[];
 }
+
+export class TurnProgressDto {
+  @ApiProperty({ format: 'uuid' }) studentId!: string;
+  @ApiProperty({ type: String, nullable: true }) displayName!: string | null;
+  @ApiProperty({ enum: ['not_started', 'in_progress', 'passed'], description: 'Status of this assignment turn only' }) status!: string;
+  @ApiProperty({ example: 0, description: 'Best stars within this turn only' }) bestStars!: number;
+  @ApiProperty({ example: 0, description: 'Attempts made in this turn only' }) attemptCount!: number;
+  @ApiProperty({ example: 0, description: 'Points earned from this turn only (sum of its ledger entries)' }) points!: number;
+  @ApiProperty({ type: String, format: 'date-time', nullable: true }) firstPassedAt!: Date | null;
+  @ApiProperty({ type: String, format: 'date-time', nullable: true }) lastAttemptAt!: Date | null;
+}
+
+export class AssignmentProgressDto {
+  @ApiProperty({ format: 'uuid' }) assignmentId!: string;
+  @ApiProperty({ enum: ['upcoming', 'active', 'ended', 'cancelled'] }) phase!: string;
+  @ApiProperty({ type: [TurnProgressDto], description: 'Recipients who are still active members of the class' }) students!: TurnProgressDto[];
+}

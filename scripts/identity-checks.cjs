@@ -140,6 +140,7 @@ module.exports = async function identityChecks(dataSource) {
     await require('./adventure-checks.cjs')({ source:dataSource,request,login,teacher,admin });
     await require('./admin-content-checks.cjs')({ source:dataSource,request,login,teacher,admin });
     await require('./assignments-checks.cjs')({ source:dataSource,request,login,teacher,admin });
+    await require('./assignment-turns-checks.cjs')({ source:dataSource,request,login,teacher,admin });
 
     // Failure after the UPDATE must roll back both the role and token version.
     await dataSource.query(`CREATE FUNCTION test_reject_audit() RETURNS trigger LANGUAGE plpgsql AS $$
@@ -189,7 +190,7 @@ module.exports = async function identityChecks(dataSource) {
       for (const path of ['/admin/content','/admin/content/{id}/versions/{version}/publish','/admin/adventure/path','/admin/rules','/admin/rules/effective']) {
         assert.equal(Boolean(doc.data.paths[path]), audience === 'admin', path);
       }
-      for (const path of ['/teacher/assignments','/teacher/assignments/{id}','/teacher/assignments/{id}/cancel']) {
+      for (const path of ['/teacher/assignments','/teacher/assignments/{id}','/teacher/assignments/{id}/cancel','/teacher/assignments/{id}/progress']) {
         assert.equal(Boolean(doc.data.paths[path]), audience === 'teacher', path);
       }
       assert.equal(Boolean(doc.data.paths['/adventure/map']), audience === 'student');

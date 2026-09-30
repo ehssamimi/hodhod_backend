@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpCode, Module, Param, ParseUUIDPipe, Post, Qu
 import { ApiBadRequestResponse, ApiBearerAuth, ApiConflictResponse, ApiCreatedResponse, ApiForbiddenResponse, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
 import { CurrentUser, Roles } from '../auth/security';
 import { User } from '../users/user.entity';
-import { AssignmentDetailDto, AssignmentDto, CreateAssignmentDto, ListAssignmentsDto } from './assignments.dto';
+import { AssignmentDetailDto, AssignmentDto, AssignmentProgressDto, CreateAssignmentDto, ListAssignmentsDto } from './assignments.dto';
 import { AssignmentsService } from './assignments.service';
 
 @ApiTags('Teacher / Assignments')
@@ -35,6 +35,15 @@ export class TeacherAssignmentsController {
   @ApiOkResponse({ type: AssignmentDetailDto })
   @ApiNotFoundResponse({ description: 'Assignment missing or owned by another teacher' })
   get(@CurrentUser() user: User, @Param('id', ParseUUIDPipe) id: string) { return this.assignments.get(user, id); }
+
+  @Get(':id/progress')
+  @ApiOperation({
+    summary: 'Status, attempts, best stars and points of each student for this assignment turn only',
+    description: 'Every assignment ID is an independent turn: results from Adventure or from an earlier assignment of the same content never count here. Students who left the class are omitted.',
+  })
+  @ApiOkResponse({ type: AssignmentProgressDto })
+  @ApiNotFoundResponse({ description: 'Assignment missing or owned by another teacher' })
+  progress(@CurrentUser() user: User, @Param('id', ParseUUIDPipe) id: string) { return this.assignments.progress(user, id); }
 
   @Post(':id/cancel')
   @HttpCode(200)
