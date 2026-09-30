@@ -142,3 +142,14 @@ Timezone must be a named timezone accepted by the runtime (for example Asia/Tehr
 | GET | /teacher/assignments/:id/progress | برای هر گیرنده در همین نوبت: `status` (`not_started`/`in_progress`/`passed`)، `bestStars`، `attemptCount`، `points`، `firstPassedAt`، `lastAttemptAt` |
 
 فقط ردیف‌های همان `assignmentId` خوانده می‌شوند، پس نتیجهٔ Adventure یا نوبت قبلیِ همان بازی نوبت تازه را تکمیل نمی‌کند و امتیازشان به آن اضافه نمی‌شود (با تست روی داده‌های واقعی attempt/ledger). دانش‌آموزی که کلاس را ترک کرده برای آن معلم نمایش داده نمی‌شود ولی سوابقش می‌ماند. `passed` از `first_passed_at` ثبت‌شده می‌آید، نه قانون امتیاز جاری. نوشتن این ردیف‌ها هنگام ثبت تلاش با BE-14/15/16 است. توجه: جزئیات تکلیف (`GET /teacher/assignments/:id`) هنوز کل گیرندگان زمان ساخت را نشان می‌دهد؛ محدودکردن آن به اعضای فعلی همراه گزارش‌های BE-13 انجام می‌شود.
+
+## فهرست تکلیف‌های دانش‌آموز (BE-12)
+
+فقط نقش student؛ در `/docs/student` ثبت شده است. migration جدید ندارد.
+
+| روش | مسیر | رفتار |
+| --- | --- | --- |
+| GET | /assignments/mine | تکلیف‌های خود دانش‌آموز؛ فیلتر `phase` (`upcoming`/`active`/`ended`)، `limit`، `offset` |
+| GET | /assignments/mine/:id | یک نوبت از تکلیف‌های خودش |
+
+ترتیب: بازها (مهلت نزدیک‌تر اول)، سپس آتی، سپس پایان‌یافته (تازه‌ترین اول). هر ردیف: `assignmentId` (شناسهٔ نوبت)، کلاس، محتوا (`contentId`, `title`, `subject`, `unityId`, `version`, `available`)، `startsAt`/`endsAt`، `phase` از ساعت سرور، و وضعیت همین نوبت (`status`: `not_started`/`in_progress`/`passed`، `bestStars`، `attemptCount`، `points`، `passStars`/`maxStars`). فقط ردیف‌های همین `assignmentId` خوانده می‌شود؛ Adventure و نوبت‌های دیگر همان بازی اثری ندارند. قواعد نمایش: دانش‌آموز باید گیرندهٔ صریح باشد و همان کلاس را اکنون عضو باشد (با ترک یا تغییر کلاس، تکلیف‌های کلاس قبلی از فهرست او خارج می‌شوند ولی سوابق می‌مانند؛ این تفسیر با تصمیم باز شمارهٔ ۶ هم‌جهت است و اگر محصول تاریخچهٔ کلاس قبلی را بخواهد باید تغییر کند)؛ تکلیف لغوشده پنهان است؛ عضو تازهٔ کلاس مخاطب تکلیف‌های قبلی نیست (تصمیم باز ۲). اگر محتوا بعداً از انتشار خارج شود، نوبت در فهرست می‌ماند با `available=false` و `unityId=null`. شروع تلاش روی نوبت فعال با BE-14 است.

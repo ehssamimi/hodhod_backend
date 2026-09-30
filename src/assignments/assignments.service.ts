@@ -5,7 +5,7 @@ import { AssignmentDetailDto, AssignmentDto, AssignmentProgressDto, CreateAssign
 
 const MAX_WINDOW_MS = 366 * 24 * 3600 * 1000;
 
-const phase = `CASE WHEN a.status='cancelled' THEN 'cancelled' WHEN a.status='archived' THEN 'ended'
+export const phase = `CASE WHEN a.status='cancelled' THEN 'cancelled' WHEN a.status='archived' THEN 'ended'
   WHEN clock_timestamp() < a.starts_at THEN 'upcoming' WHEN clock_timestamp() < a.ends_at THEN 'active' ELSE 'ended' END`;
 const projection = `SELECT a.id, a.class_id AS "classId", cl.name AS "className", a.content_id AS "contentId", c.title AS "contentTitle",
     a.audience, a.starts_at AS "startsAt", a.ends_at AS "endsAt", a.status, ${phase} AS phase,
