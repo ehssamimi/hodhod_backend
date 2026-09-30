@@ -29,7 +29,9 @@ export class AssignmentsService {
     const rows = await manager.query(projection + ' WHERE a.id=$1 AND a.teacher_id=$2', [id, teacherId]);
     if (!rows.length) throw new NotFoundException('Assignment not found');
     const recipients = await manager.query(`SELECT r.student_id AS "studentId", u.display_name AS "displayName"
-      FROM assignment_recipients r JOIN users u ON u.id=r.student_id WHERE r.assignment_id=$1 ORDER BY u.display_name NULLS LAST, r.student_id`, [id]);
+      FROM assignment_recipients r JOIN users u ON u.id=r.student_id
+      JOIN class_memberships m ON m.class_id=$2 AND m.student_id=r.student_id AND m.ended_at IS NULL
+      WHERE r.assignment_id=$1 ORDER BY u.display_name NULLS LAST, r.student_id`, [id, rows[0].classId]);
     return { ...rows[0], recipients };
   }
 

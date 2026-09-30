@@ -56,7 +56,7 @@ export class RecipientDto {
 }
 
 export class AssignmentDetailDto extends AssignmentDto {
-  @ApiProperty({ type: [RecipientDto], description: 'Explicit recipients fixed at creation' }) recipients!: RecipientDto[];
+  @ApiProperty({ type: [RecipientDto], description: 'Explicit recipients fixed at creation who are still active members of the class; recipientCount is the original audience size' }) recipients!: RecipientDto[];
 }
 
 export class TurnProgressDto {
