@@ -25,6 +25,14 @@ export class AttemptProgressDto {
   @ApiProperty({ type: String, format: 'date-time', nullable: true }) firstPassedAt!: Date | null;
 }
 
+export class AttemptStreakDto {
+  @ApiProperty({ example: '2026-10-02', description: 'Calendar date in your timezone at the time the server received the attempt' }) activityDate!: string;
+  @ApiProperty({ description: 'This attempt created the activity day (a day counts once; only a qualifying result creates it)' }) newDay!: boolean;
+  @ApiProperty({ example: 3, description: 'Consecutive activity days ending today or yesterday; 0 when the run is over' }) currentDays!: number;
+  @ApiProperty({ example: 7 }) bestDays!: number;
+  @ApiProperty({ example: 0, description: 'Points for the new day from STREAK_DAILY_POINTS; 0 when none is configured or the day already counted' }) bonusPoints!: number;
+}
+
 export class AttemptResultDto {
   @ApiProperty({ format: 'uuid' }) attemptId!: string;
   @ApiProperty({ description: 'true when this is a replay of an already recorded attempt; the rest of the body is identical to the first response' }) duplicate!: boolean;
@@ -40,4 +48,5 @@ export class AttemptResultDto {
   @ApiProperty({ format: 'date-time', description: 'Server receipt time' }) receivedAt!: Date;
   @ApiProperty({ type: AttemptProgressDto }) progress!: AttemptProgressDto;
   @ApiProperty({ example: 10, description: 'Points this attempt added (only the improvement over the previous best in the same context)' }) pointsAwarded!: number;
+  @ApiProperty({ type: AttemptStreakDto, description: 'Activity day and streak after this attempt. Absent on results stored before streaks existed.' }) streak!: AttemptStreakDto;
 }

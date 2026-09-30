@@ -4,6 +4,7 @@ import { mapSql } from '../adventure/adventure.service';
 import { effectiveRule, EffectiveRule, pointsForStars } from '../scoring/scoring';
 import { User } from '../users/user.entity';
 import { AttemptResultDto, SubmitAttemptDto } from './attempts.dto';
+import { qualifies, recordActivity } from './streak';
 
 interface Target { contentVersion: number }
 
@@ -89,12 +90,14 @@ export class AttemptsService {
         await this.record(actor.id, 'implausible_duration', input, input.attemptId, { durationSeconds: input.durationSeconds, minimum }, manager);
       }
 
+      const streak = await recordActivity(manager, actor.id, user.timezone, input.attemptId, rule.id, qualifies(input.stars, rule.passStars));
+
       const result: AttemptResultDto = {
         attemptId: input.attemptId, duplicate: false, context: input.context, contentId: input.contentId, assignmentId: input.assignmentId ?? null,
         contentVersion: target.contentVersion, scoringRuleId: rule.id, stars: input.stars, maxStars: rule.maxStars, passStars: rule.passStars,
         passed: input.stars >= rule.passStars, receivedAt: attempt.receivedAt,
         progress: { bestStars: progress.bestStars, attemptCount: progress.attemptCount, passed: progress.firstPassedAt !== null, improved: progress.improved, firstPassedAt: progress.firstPassedAt },
-        pointsAwarded,
+        pointsAwarded, streak,
       };
       await manager.query('UPDATE game_attempts SET result=$2 WHERE id=$1', [input.attemptId, JSON.stringify(result)]);
       return result;
