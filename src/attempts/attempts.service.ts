@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, HttpException, HttpStatus, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
 import { mapSql } from '../adventure/adventure.service';
 import { effectiveRule, EffectiveRule, pointsForStars } from '../scoring/scoring';
@@ -7,6 +7,17 @@ import { AttemptResultDto, SubmitAttemptDto } from './attempts.dto';
 
 interface Target { contentVersion: number }
 
+// A rejection that should leave a trace. The transaction rolls back, so the event is written afterwards.
+function suspicious<T extends HttpException>(reason: string, error: T): T {
+  return Object.assign(error, { suspicionReason: reason });
+}
+
+function setting(name: string, fallback: number, maximum: number): number {
+  const n = Number(process.env[name] ?? fallback);
+  if (!Number.isSafeInteger(n) || n < 1 || n > maximum) throw new Error('Invalid ' + name);
+  return n;
+}
+
 @Injectable()
 export class AttemptsService {
   constructor(private readonly source: DataSource) {}
@@ -14,7 +25,40 @@ export class AttemptsService {
   // One transaction per attempt: attempt row, progress, ledger and the stored replay
   // snapshot commit together. A per-student lock serializes concurrent submissions, so
   // two requests can never both see the same "previous best" and double-award points.
-  submit(actor: User, input: SubmitAttemptDto): Promise<AttemptResultDto> {
+  async submit(actor: User, input: SubmitAttemptDto): Promise<AttemptResultDto> {
+    if (input.context === 'assignment' && !input.assignmentId) throw new BadRequestException('assignmentId is required for the assignment context');
+    if (input.context === 'adventure' && input.assignmentId) throw new BadRequestException('assignmentId is not allowed for the adventure context');
+    try {
+      await this.rateLimit(actor.id);
+      return await this.handle(actor, input);
+    } catch (error) {
+      const reason = (error as { suspicionReason?: string }).suspicionReason;
+      if (reason) await this.record(actor.id, reason, input, null, { message: (error as Error).message });
+      throw error;
+    }
+  }
+
+  // Fixed one-minute window per account, shared by every instance through the database and
+  // committed on its own, so rejected submissions still use up the budget.
+  private async rateLimit(studentId: string): Promise<void> {
+    const maximum = setting('ATTEMPTS_PER_MINUTE', 30, 600);
+    const rows: Array<{ hits: number }> = await this.source.query(`
+      INSERT INTO auth_rate_limits(bucket) VALUES ($1)
+      ON CONFLICT (bucket) DO UPDATE SET
+        hits = CASE WHEN auth_rate_limits.window_start <= now() - interval '60 seconds' THEN 1 ELSE auth_rate_limits.hits + 1 END,
+        window_start = CASE WHEN auth_rate_limits.window_start <= now() - interval '60 seconds' THEN now() ELSE auth_rate_limits.window_start END
+      RETURNING hits`, ['attempt:' + studentId]);
+    if (rows[0].hits > maximum) {
+      throw suspicious('rate_limited', new HttpException('Too many attempt submissions; try again in a minute', HttpStatus.TOO_MANY_REQUESTS));
+    }
+  }
+
+  private record(studentId: string, reason: string, input: SubmitAttemptDto, attemptId: string | null, details: Record<string, unknown>, manager?: EntityManager) {
+    return (manager ?? this.source).query(`INSERT INTO suspicious_events(student_id,attempt_id,content_id,context,assignment_id,reason,details) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [studentId, attemptId, input.contentId, input.context, input.assignmentId ?? null, reason, JSON.stringify(details)]);
+  }
+
+  private handle(actor: User, input: SubmitAttemptDto): Promise<AttemptResultDto> {
     if (input.context === 'assignment' && !input.assignmentId) throw new BadRequestException('assignmentId is required for the assignment context');
     if (input.context === 'adventure' && input.assignmentId) throw new BadRequestException('assignmentId is not allowed for the adventure context');
     return this.source.transaction(async manager => {
@@ -30,7 +74,7 @@ export class AttemptsService {
         ? await this.adventureTarget(manager, actor.id, input.contentId)
         : await this.assignmentTarget(manager, actor.id, input.assignmentId!, input.contentId);
       const rule = await effectiveRule(manager, input.contentId);
-      if (input.stars > rule.maxStars) throw new BadRequestException('stars cannot exceed ' + rule.maxStars);
+      if (input.stars > rule.maxStars) throw suspicious('stars_above_max', new BadRequestException('stars cannot exceed ' + rule.maxStars));
 
       // Receipt time is the database clock; the start is derived from the reported duration.
       const attempt = (await manager.query(`INSERT INTO game_attempts(id,student_id,content_id,content_version,context,assignment_id,scoring_rule_id,stars,max_stars,started_at,completed_at,received_at)
@@ -39,6 +83,11 @@ export class AttemptsService {
 
       const progress = await this.updateProgress(manager, actor.id, input, rule, attempt.receivedAt);
       const pointsAwarded = await this.awardPoints(manager, actor.id, input, rule, progress);
+      // Accepted but implausible: a passing result reported faster than any real play. Kept for review.
+      const minimum = setting('ATTEMPT_MIN_PLAUSIBLE_SECONDS', 3, 600);
+      if (input.stars >= rule.passStars && input.durationSeconds < minimum) {
+        await this.record(actor.id, 'implausible_duration', input, input.attemptId, { durationSeconds: input.durationSeconds, minimum }, manager);
+      }
 
       const result: AttemptResultDto = {
         attemptId: input.attemptId, duplicate: false, context: input.context, contentId: input.contentId, assignmentId: input.assignmentId ?? null,
@@ -54,9 +103,9 @@ export class AttemptsService {
 
   private replay(actor: User, input: SubmitAttemptDto, row: Record<string, unknown>): AttemptResultDto {
     // Never reveal or reuse another student's attempt ID.
-    if (row.student_id !== actor.id) throw new ConflictException('Attempt ID is already used');
+    if (row.student_id !== actor.id) throw suspicious('attempt_id_other_student', new ConflictException('Attempt ID is already used'));
     if (row.content_id !== input.contentId.toLowerCase() || row.context !== input.context || (row.assignment_id ?? null) !== (input.assignmentId?.toLowerCase() ?? null) || row.stars !== input.stars) {
-      throw new ConflictException('Attempt ID was already used with different data');
+      throw suspicious('attempt_id_data_mismatch', new ConflictException('Attempt ID was already used with different data'));
     }
     return { ...(row.result as AttemptResultDto), duplicate: true };
   }
@@ -64,8 +113,8 @@ export class AttemptsService {
   private async adventureTarget(manager: EntityManager, studentId: string, contentId: string): Promise<Target> {
     const stages: Array<{ contentId: string; status: string; version: number }> = await manager.query(mapSql, [studentId]);
     const stage = stages.find(s => s.contentId === contentId);
-    if (!stage) throw new NotFoundException('Content is not on the Adventure map');
-    if (stage.status !== 'unlocked') throw new ForbiddenException('Stage is locked');
+    if (!stage) throw suspicious('not_on_adventure_map', new NotFoundException('Content is not on the Adventure map'));
+    if (stage.status !== 'unlocked') throw suspicious('stage_locked', new ForbiddenException('Stage is locked'));
     return { contentVersion: stage.version };
   }
 
@@ -76,16 +125,16 @@ export class AttemptsService {
       JOIN assignment_recipients r ON r.assignment_id=a.id AND r.student_id=$2
       JOIN class_memberships m ON m.class_id=a.class_id AND m.student_id=$2 AND m.ended_at IS NULL
       WHERE a.id=$1 FOR SHARE OF a`, [assignmentId, studentId]);
-    if (!rows.length) throw new NotFoundException('Assignment not found');
+    if (!rows.length) throw suspicious('assignment_not_addressed', new NotFoundException('Assignment not found'));
     const a = rows[0];
-    if (a.content_id !== contentId) throw new BadRequestException('contentId does not match the assignment');
-    if (a.status !== 'scheduled') throw new ConflictException('Assignment is not open');
-    if (!a.started) throw new ConflictException('Assignment has not started');
-    if (!a.open) throw new ConflictException('Assignment window has closed');
+    if (a.content_id !== contentId) throw suspicious('content_mismatch', new BadRequestException('contentId does not match the assignment'));
+    if (a.status !== 'scheduled') throw suspicious('assignment_cancelled', new ConflictException('Assignment is not open'));
+    if (!a.started) throw suspicious('assignment_not_started', new ConflictException('Assignment has not started'));
+    if (!a.open) throw suspicious('window_closed', new ConflictException('Assignment window has closed'));
     const version = await manager.query(`SELECT v.version FROM content_items c JOIN LATERAL (
         SELECT version FROM content_versions WHERE content_id=c.id AND published_at IS NOT NULL AND published_at<=clock_timestamp() ORDER BY version DESC LIMIT 1
       ) v ON true WHERE c.id=$1 AND c.status='published' AND c.kind IN ('practice','both')`, [contentId]);
-    if (!version.length) throw new ConflictException('Content is not available');
+    if (!version.length) throw suspicious('content_unavailable', new ConflictException('Content is not available'));
     return { contentVersion: version[0].version };
   }
 

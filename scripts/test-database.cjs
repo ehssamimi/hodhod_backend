@@ -10,10 +10,12 @@ const { databaseOptions } = require('../src/database/data-source');
 const { User } = require('../src/users/user.entity');
 const { EmailAuthentication1790640000000 } = require('../src/database/migrations/1790640000000-EmailAuthentication');
 const { CloseArchivedMemberships1790726400000 } = require('../src/database/migrations/1790726400000-CloseArchivedMemberships');
+const { SuspiciousEvents1790985600000 } = require('../src/database/migrations/1790985600000-SuspiciousEvents');
 const { AttemptResultSnapshot1790899200000 } = require('../src/database/migrations/1790899200000-AttemptResultSnapshot');
 const { ImmutableRuleHistory1790812800000 } = require('../src/database/migrations/1790812800000-ImmutableRuleHistory');
 process.env.AUTH_OTP_SECRET = randomUUID() + randomUUID();
 process.env.AUTH_VERIFY_IP_LIMIT='100';
+process.env.ATTEMPTS_PER_MINUTE='500';
 // Test fixture only, not a product decision: total points for 0..5 best stars.
 process.env.SCORING_STAR_POINTS='0,0,0,20,30,40';
 
@@ -220,11 +222,16 @@ async function main() {
   await fresh.undoLastMigration();
   assert.equal((await fresh.runMigrations()).length,1);
   console.log('PASS BE-14 attempt result snapshot column applies, reverts and reapplies');
+  fresh.migrations.push(new SuspiciousEvents1790985600000());
+  assert.equal((await fresh.runMigrations()).length,1);
+  await fresh.undoLastMigration();
+  assert.equal((await fresh.runMigrations()).length,1);
+  console.log('PASS BE-18 suspicious events table applies, reverts and reapplies');
   console.log('PASS BE-06 historical archive repair, active membership retention and non-reopening rollback');
   await require('./identity-checks.cjs')(fresh);
   console.log('All BE-02 identity integration checks passed.');
   const emailSource = await source('be03_full', false, true);
-  assert.equal((await emailSource.runMigrations()).length, 6);
+  assert.equal((await emailSource.runMigrations()).length, 7);
   await require('./email-auth-checks.cjs')(emailSource);
   console.log('All BE-03 email authentication checks passed.');
 }

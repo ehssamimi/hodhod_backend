@@ -9,6 +9,7 @@ import { EmailAuthentication1790640000000 } from './migrations/1790640000000-Ema
 import { CloseArchivedMemberships1790726400000 } from './migrations/1790726400000-CloseArchivedMemberships';
 import { ImmutableRuleHistory1790812800000 } from './migrations/1790812800000-ImmutableRuleHistory';
 import { AttemptResultSnapshot1790899200000 } from './migrations/1790899200000-AttemptResultSnapshot';
+import { SuspiciousEvents1790985600000 } from './migrations/1790985600000-SuspiciousEvents';
 
 export function databaseOptions(): DataSourceOptions {
   return {
@@ -19,7 +20,7 @@ export function databaseOptions(): DataSourceOptions {
     password: process.env.DATABASE_PASSWORD,
     database: process.env.DATABASE_NAME,
     entities: [User],
-    migrations: [UsersBaseline1790553600000, MvpDataModel1790553601000, EmailAuthentication1790640000000, CloseArchivedMemberships1790726400000, ImmutableRuleHistory1790812800000, AttemptResultSnapshot1790899200000],
+    migrations: [UsersBaseline1790553600000, MvpDataModel1790553601000, EmailAuthentication1790640000000, CloseArchivedMemberships1790726400000, ImmutableRuleHistory1790812800000, AttemptResultSnapshot1790899200000, SuspiciousEvents1790985600000],
     migrationsTableName: 'schema_migrations',
     migrationsTransactionMode: 'all',
     synchronize: false,
