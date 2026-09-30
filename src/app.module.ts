@@ -11,6 +11,7 @@ import { TeacherReportsModule } from './reports/reports.module';
 import { AdminSuspiciousModule } from './attempts/suspicious.module';
 import { StudentStreakModule } from './attempts/streak.module';
 import { StudentLeaderboardsModule } from './leaderboards/leaderboards.module';
+import { AdminOverviewModule } from './admin-overview/admin-overview.module';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
@@ -21,7 +22,7 @@ import { AdminUsersModule } from './users/admin-users.module';
 import { databaseOptions } from './database/data-source';
 
 @Module({
-  imports: [TypeOrmModule.forRoot(databaseOptions()), AuthModule, ProfileModule, AdminUsersModule, StudentProfileModule, ClassesModule, StudentClassesModule, StudentContentModule, TeacherContentModule, StudentAdventureModule, AdminContentModule, TeacherAssignmentsModule, StudentAssignmentsModule, AttemptsModule, StudentFeedbackModule, TeacherFeedbackModule, AdminFeedbackModule, TeacherReportsModule, AdminSuspiciousModule, StudentStreakModule, StudentLeaderboardsModule],
+  imports: [TypeOrmModule.forRoot(databaseOptions()), AuthModule, ProfileModule, AdminUsersModule, StudentProfileModule, ClassesModule, StudentClassesModule, StudentContentModule, TeacherContentModule, StudentAdventureModule, AdminContentModule, TeacherAssignmentsModule, StudentAssignmentsModule, AttemptsModule, StudentFeedbackModule, TeacherFeedbackModule, AdminFeedbackModule, TeacherReportsModule, AdminSuspiciousModule, StudentStreakModule, StudentLeaderboardsModule, AdminOverviewModule],
   controllers: [HealthController],
 })
 export class AppModule {}

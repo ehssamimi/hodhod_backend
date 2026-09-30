@@ -10,6 +10,7 @@ const { databaseOptions } = require('../src/database/data-source');
 const { User } = require('../src/users/user.entity');
 const { EmailAuthentication1790640000000 } = require('../src/database/migrations/1790640000000-EmailAuthentication');
 const { CloseArchivedMemberships1790726400000 } = require('../src/database/migrations/1790726400000-CloseArchivedMemberships');
+const { AdminAudit1791072000000 } = require('../src/database/migrations/1791072000000-AdminAudit');
 const { SuspiciousEvents1790985600000 } = require('../src/database/migrations/1790985600000-SuspiciousEvents');
 const { AttemptResultSnapshot1790899200000 } = require('../src/database/migrations/1790899200000-AttemptResultSnapshot');
 const { ImmutableRuleHistory1790812800000 } = require('../src/database/migrations/1790812800000-ImmutableRuleHistory');
@@ -227,11 +228,16 @@ async function main() {
   await fresh.undoLastMigration();
   assert.equal((await fresh.runMigrations()).length,1);
   console.log('PASS BE-18 suspicious events table applies, reverts and reapplies');
+  fresh.migrations.push(new AdminAudit1791072000000());
+  assert.equal((await fresh.runMigrations()).length,1);
+  await fresh.undoLastMigration();
+  assert.equal((await fresh.runMigrations()).length,1);
+  console.log('PASS BE-21 admin audit table applies, reverts and reapplies');
   console.log('PASS BE-06 historical archive repair, active membership retention and non-reopening rollback');
   await require('./identity-checks.cjs')(fresh);
   console.log('All BE-02 identity integration checks passed.');
   const emailSource = await source('be03_full', false, true);
-  assert.equal((await emailSource.runMigrations()).length, 7);
+  assert.equal((await emailSource.runMigrations()).length, 8);
   await require('./email-auth-checks.cjs')(emailSource);
   console.log('All BE-03 email authentication checks passed.');
 }

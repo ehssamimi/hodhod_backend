@@ -44,6 +44,12 @@ export class AdminContentService {
     await manager.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 1790553609))', [key]);
   }
 
+  // Sensitive content and rule changes leave an append-only record with the acting admin and the server time.
+  private audit(manager: EntityManager, actor: User, action: string, entityType: string, entityId: string | null, details: Record<string, unknown> = {}) {
+    return manager.query('INSERT INTO admin_audit(actor_id,action,entity_type,entity_id,details) VALUES ($1,$2,$3,$4,$5)',
+      [actor.id, action, entityType, entityId, JSON.stringify(details)]);
+  }
+
   private async lockItem(manager: EntityManager, id: string) {
     const rows = await manager.query('SELECT id, kind, status FROM content_items WHERE id=$1 FOR UPDATE', [id]);
     if (!rows.length) throw new NotFoundException('Content not found');
@@ -88,6 +94,7 @@ export class AdminContentService {
         [input.title, input.subject, input.grade ?? 3, input.kind]))[0].id;
       await this.requireFreeUnityId(manager, id, input.unityId);
       await manager.query('INSERT INTO content_versions(content_id,version,unity_id,configuration) VALUES ($1,1,$2,$3)', [id, input.unityId, configuration]);
+      await this.audit(manager, actor, 'content.create', 'content', id, { title: input.title, kind: input.kind, unityId: input.unityId });
       return this.detail(manager, id);
     });
   }
@@ -108,6 +115,7 @@ export class AdminContentService {
       }
       await manager.query('UPDATE content_items SET title=COALESCE($2,title), subject=COALESCE($3,subject), kind=COALESCE($4,kind) WHERE id=$1',
         [id, input.title ?? null, input.subject ?? null, input.kind ?? null]);
+      await this.audit(manager, actor, 'content.update', 'content', id, { before: { kind: item.kind }, changes: input });
       return this.detail(manager, id);
     });
   }
@@ -119,6 +127,7 @@ export class AdminContentService {
       await this.requireFreeUnityId(manager, id, input.unityId);
       const next = (await manager.query('SELECT COALESCE(max(version),0)+1 AS v FROM content_versions WHERE content_id=$1', [id]))[0].v;
       await manager.query('INSERT INTO content_versions(content_id,version,unity_id,configuration) VALUES ($1,$2,$3,$4)', [id, next, input.unityId, configuration]);
+      await this.audit(manager, actor, 'content.version.add', 'content', id, { version: next, unityId: input.unityId });
       return this.detail(manager, id);
     });
   }
@@ -134,6 +143,7 @@ export class AdminContentService {
       if (input.unityId) await this.requireFreeUnityId(manager, id, input.unityId);
       await manager.query('UPDATE content_versions SET unity_id=COALESCE($3,unity_id), configuration=COALESCE($4,configuration) WHERE content_id=$1 AND version=$2',
         [id, version, input.unityId ?? null, configuration]);
+      await this.audit(manager, actor, 'content.version.update', 'content', id, { version, unityId: input.unityId ?? null, configurationChanged: input.configuration !== undefined });
       return this.detail(manager, id);
     });
   }
@@ -141,23 +151,26 @@ export class AdminContentService {
   // Release time is the server clock, never a client value.
   publish(actor: User, id: string, version: number): Promise<AdminContentDto> {
     return this.write(actor, async manager => {
-      await this.lockItem(manager, id);
+      const item = await this.lockItem(manager, id);
       const rows = await manager.query('SELECT published_at FROM content_versions WHERE content_id=$1 AND version=$2 FOR UPDATE', [id, version]);
       if (!rows.length) throw new NotFoundException('Version not found');
-      if (!rows[0].published_at) {
+      const releasing = !rows[0].published_at;
+      if (releasing) {
         const later = await manager.query('SELECT 1 FROM content_versions WHERE content_id=$1 AND version>$2 AND published_at IS NOT NULL', [id, version]);
         if (later.length) throw new ConflictException('A newer version is already released; release versions in order');
         await manager.query('UPDATE content_versions SET published_at=clock_timestamp() WHERE content_id=$1 AND version=$2', [id, version]);
       }
       await manager.query("UPDATE content_items SET status='published' WHERE id=$1", [id]);
+      if (releasing || item.status !== 'published') await this.audit(manager, actor, 'content.publish', 'content', id, { version, releasedNow: releasing, previousStatus: item.status });
       return this.detail(manager, id);
     });
   }
 
   setStatus(actor: User, id: string, status: 'draft' | 'archived'): Promise<AdminContentDto> {
     return this.write(actor, async manager => {
-      await this.lockItem(manager, id);
+      const item = await this.lockItem(manager, id);
       await manager.query('UPDATE content_items SET status=$2 WHERE id=$1', [id, status]);
+      if (item.status !== status) await this.audit(manager, actor, status === 'draft' ? 'content.unpublish' : 'content.archive', 'content', id, { previousStatus: item.status });
       return this.detail(manager, id);
     });
   }
@@ -218,6 +231,7 @@ export class AdminContentService {
           await manager.query('UPDATE adventure_stages SET prerequisite_content_id=$2 WHERE content_id=$1', [stage.contentId, stage.prerequisiteContentId]);
         }
       }
+      await this.audit(manager, actor, 'adventure.path.replace', 'adventure_path', null, { stages: ids.length, removed: removed.length });
       return this.path(manager);
     });
   }
@@ -272,6 +286,7 @@ export class AdminContentService {
       const rows = await manager.query(`INSERT INTO scoring_rules(content_id,version,max_stars,pass_stars,definition) VALUES ($1,$2,$3,$4,$5)
         RETURNING id, content_id AS "contentId", version, max_stars AS "maxStars", pass_stars AS "passStars", definition, created_at AS "createdAt"`,
         [contentId, next, input.maxStars, input.passStars, definition]);
+      await this.audit(manager, actor, 'rule.create', 'rule', rows[0].id, { contentId, version: next, maxStars: input.maxStars, passStars: input.passStars });
       return rows[0];
     });
   }
