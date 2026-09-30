@@ -15,6 +15,7 @@ module.exports = async function identityChecks(dataSource) {
   const { TeacherAssignmentsModule } = require('../src/assignments/assignments.module');
   const { StudentAssignmentsModule } = require('../src/assignments/student-assignments.module');
   const { AttemptsModule } = require('../src/attempts/attempts.module');
+  const { StudentFeedbackModule, TeacherFeedbackModule, AdminFeedbackModule } = require('../src/feedback/feedback.module');
   const { StudentClassesModule } = require('../src/classes/student-classes.module');
   const { StudentContentModule, TeacherContentModule } = require('../src/content/content.module');
   const { StudentProfileModule } = require('../src/users/student-profile.module');
@@ -45,8 +46,8 @@ module.exports = async function identityChecks(dataSource) {
     .overrideProvider(DataSource).useValue(dataSource).compile();
   const app = testing.createNestApplication();
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
-  setupSwagger(app, { student: [AppModule,AuthModule,ProfileModule,StudentProfileModule,StudentClassesModule,StudentContentModule,StudentAdventureModule,StudentAssignmentsModule,AttemptsModule], teacher: [AppModule,AuthModule,ProfileModule,ClassesModule,TeacherContentModule,TeacherAssignmentsModule],
-    admin: [AppModule,AuthModule,ProfileModule,AdminUsersModule,AdminContentModule] });
+  setupSwagger(app, { student: [AppModule,AuthModule,ProfileModule,StudentProfileModule,StudentClassesModule,StudentContentModule,StudentAdventureModule,StudentAssignmentsModule,AttemptsModule,StudentFeedbackModule], teacher: [AppModule,AuthModule,ProfileModule,ClassesModule,TeacherContentModule,TeacherAssignmentsModule,TeacherFeedbackModule],
+    admin: [AppModule,AuthModule,ProfileModule,AdminUsersModule,AdminContentModule,AdminFeedbackModule] });
   try {
     await app.listen(0, '127.0.0.1');
     const port = app.getHttpServer().address().port;
@@ -145,6 +146,7 @@ module.exports = async function identityChecks(dataSource) {
     await require('./assignment-turns-checks.cjs')({ source:dataSource,request,login,teacher,admin });
     await require('./student-assignments-checks.cjs')({ source:dataSource,request,login,teacher,admin });
     await require('./attempts-checks.cjs')({ source:dataSource,request,login,teacher,admin });
+    await require('./feedback-checks.cjs')({ source:dataSource,request,login,teacher,admin });
 
     // Failure after the UPDATE must roll back both the role and token version.
     await dataSource.query(`CREATE FUNCTION test_reject_audit() RETURNS trigger LANGUAGE plpgsql AS $$
@@ -199,6 +201,10 @@ module.exports = async function identityChecks(dataSource) {
       }
       for (const path of ['/assignments/mine','/assignments/mine/{id}']) assert.equal(Boolean(doc.data.paths[path]), audience === 'student', path);
       assert.equal(Boolean(doc.data.paths['/attempts']), audience === 'student');
+      assert.equal(Boolean(doc.data.paths['/feedback']), audience === 'student');
+      assert.equal(Boolean(doc.data.paths['/feedback/{contentId}']), audience === 'student');
+      assert.equal(Boolean(doc.data.paths['/teacher/feedback']), audience === 'teacher');
+      assert.equal(Boolean(doc.data.paths['/admin/feedback']), audience === 'admin');
       assert.equal(Boolean(doc.data.paths['/adventure/map']), audience === 'student');
       assert.equal(Boolean(doc.data.paths['/teacher/content']), audience === 'teacher');
       assert.equal(Boolean(doc.data.paths['/teacher/content/{id}']), audience === 'teacher');

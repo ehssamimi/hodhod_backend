@@ -6,6 +6,7 @@ import { AdminContentModule } from './admin-content/admin-content.module';
 import { TeacherAssignmentsModule } from './assignments/assignments.module';
 import { StudentAssignmentsModule } from './assignments/student-assignments.module';
 import { AttemptsModule } from './attempts/attempts.module';
+import { StudentFeedbackModule, TeacherFeedbackModule, AdminFeedbackModule } from './feedback/feedback.module';
 import 'dotenv/config';
 import 'reflect-metadata';
 import { ValidationPipe } from '@nestjs/common';
@@ -25,9 +26,9 @@ async function bootstrap() {
     // Add each future feature module only to its audience's list.
     const sharedModules = [AppModule, AuthModule, ProfileModule];
     setupSwagger(app, {
-      student: [...sharedModules, StudentProfileModule, StudentClassesModule, StudentContentModule, StudentAdventureModule, StudentAssignmentsModule, AttemptsModule],
-      teacher: [...sharedModules, ClassesModule, TeacherContentModule, TeacherAssignmentsModule],
-      admin: [...sharedModules, AdminUsersModule, AdminContentModule],
+      student: [...sharedModules, StudentProfileModule, StudentClassesModule, StudentContentModule, StudentAdventureModule, StudentAssignmentsModule, AttemptsModule, StudentFeedbackModule],
+      teacher: [...sharedModules, ClassesModule, TeacherContentModule, TeacherAssignmentsModule, TeacherFeedbackModule],
+      admin: [...sharedModules, AdminUsersModule, AdminContentModule, AdminFeedbackModule],
     });
   }
 
