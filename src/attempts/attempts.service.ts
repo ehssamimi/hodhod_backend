@@ -90,7 +90,7 @@ export class AttemptsService {
         await this.record(actor.id, 'implausible_duration', input, input.attemptId, { durationSeconds: input.durationSeconds, minimum }, manager);
       }
 
-      const streak = await recordActivity(manager, actor.id, user.timezone, input.attemptId, rule.id, qualifies(input.stars, rule.passStars));
+      const streak = await recordActivity(manager, actor.id, user.timezone, input.attemptId, rule.id, qualifies(input.context, input.stars, rule.passStars));
 
       const result: AttemptResultDto = {
         attemptId: input.attemptId, duplicate: false, context: input.context, contentId: input.contentId, assignmentId: input.assignmentId ?? null,

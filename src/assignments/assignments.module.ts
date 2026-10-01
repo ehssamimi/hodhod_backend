@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpCode, Module, Param, ParseUUIDPipe, Post, Qu
 import { ApiBadRequestResponse, ApiBearerAuth, ApiConflictResponse, ApiCreatedResponse, ApiForbiddenResponse, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
 import { CurrentUser, Roles } from '../auth/security';
 import { User } from '../users/user.entity';
-import { AssignmentDetailDto, AssignmentDto, AssignmentProgressDto, CreateAssignmentDto, ListAssignmentsDto } from './assignments.dto';
+import { AssignmentDetailDto, AssignmentDto, AssignmentProgressDto, CreateAssignmentDto, ExtendAssignmentDto, ListAssignmentsDto } from './assignments.dto';
 import { AssignmentsService } from './assignments.service';
 
 @ApiTags('Teacher / Assignments')
@@ -18,7 +18,7 @@ export class TeacherAssignmentsController {
   @Post()
   @ApiOperation({
     summary: 'Assign published practice content to a whole class or selected students for a time window',
-    description: 'Each call creates a new independent allocation (new ID), even for the same content and class. Recipients are stored explicitly and fixed at creation: whole_class snapshots the current members. There are no student groups.',
+    description: 'Each call creates a new independent allocation (new ID), even for the same content and class. A whole_class assignment automatically includes students who join before its deadline; selected recipients remain explicit. There are no student groups.',
   })
   @ApiCreatedResponse({ type: AssignmentDetailDto })
   @ApiNotFoundResponse({ description: 'Class not yours, or content not published practice content' })
@@ -44,6 +44,14 @@ export class TeacherAssignmentsController {
   @ApiOkResponse({ type: AssignmentProgressDto })
   @ApiNotFoundResponse({ description: 'Assignment missing or owned by another teacher' })
   progress(@CurrentUser() user: User, @Param('id', ParseUUIDPipe) id: string) { return this.assignments.progress(user, id); }
+
+  @Post(':id/extend')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Extend an assignment deadline, including one whose window already ended', description: 'Only moves the deadline later. Cancelled or archived assignments cannot be reopened. Current class members are added when this is a whole-class assignment.' })
+  @ApiOkResponse({ type: AssignmentDetailDto })
+  @ApiNotFoundResponse({ description: 'Assignment missing or owned by another teacher' })
+  @ApiConflictResponse({ description: 'Assignment is cancelled/archived, or the new deadline is not later' })
+  extend(@CurrentUser() user: User, @Param('id', ParseUUIDPipe) id: string, @Body() input: ExtendAssignmentDto) { return this.assignments.extend(user, id, input); }
 
   @Post(':id/cancel')
   @HttpCode(200)

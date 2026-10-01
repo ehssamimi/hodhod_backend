@@ -96,6 +96,13 @@ module.exports = async ({ source, request, login, teacher, admin }) => {
     assert.deepEqual([viaAdventure.streak.newDay, viaAdventure.streak.bonusPoints, viaAdventure.streak.currentDays], [true, 5, 1]);
     const viaTurn = await play(b, 3, { context: 'assignment', assignmentId: turn.id });
     assert.deepEqual([viaTurn.streak.newDay, viaTurn.streak.bonusPoints, viaTurn.streak.currentDays], [false, 0, 1], 'assignment result the same day adds nothing');
+    // Any teacher assignment counts, even with zero stars. This student joins after the
+    // whole-class assignment was created and must still become an eligible recipient.
+    const d = await student('assignment-no-stars');
+    ok(await call(d, '/classes/join', 'POST', { code: cls.joinCode }));
+    const low = await play(d, 0, { context: 'assignment', assignmentId: turn.id });
+    assert.deepEqual([low.streak.newDay, low.streak.currentDays, low.passed], [true, 1, false]);
+
     const bonus = await source.query("SELECT * FROM point_ledger WHERE student_id=$1 AND source='streak'", [b.user.id]);
     assert.equal(bonus.length, 1);
     assert.deepEqual([bonus[0].delta, bonus[0].attempt_id, bonus[0].assignment_id, bonus[0].activity_date.toISOString().slice(0, 10) === viaAdventure.streak.activityDate || true], [5, null, null, true]);
@@ -108,12 +115,5 @@ module.exports = async ({ source, request, login, teacher, admin }) => {
     assert.equal(ok(await call(c, '/streak')).currentDays, 1);
   } finally { process.env.STREAK_DAILY_POINTS = previousBonus; if (previousBonus === undefined) delete process.env.STREAK_DAILY_POINTS; }
 
-  // STREAK_QUALIFY=any lets every finished attempt count.
-  process.env.STREAK_QUALIFY = 'any';
-  try {
-    const d = await student('d');
-    const low = await play(d, 0);
-    assert.deepEqual([low.streak.newDay, low.streak.currentDays, low.passed], [true, 1, false]);
-  } finally { delete process.env.STREAK_QUALIFY; }
-  console.log('PASS BE-19 activity days and streaks: one day per local date, shared by Adventure and assignments, timezone snapshot, no double bonus');
+  console.log('PASS BE-19 activity days and streaks: Adventure requires passing, every assignment completion counts, timezone snapshot, no double bonus');
 };

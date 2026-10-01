@@ -706,7 +706,7 @@
     },
     "/teacher/assignments": {
       "post": {
-        "description": "Each call creates a new independent allocation (new ID), even for the same content and class. Recipients are stored explicitly and fixed at creation: whole_class snapshots the current members. There are no student groups.",
+        "description": "Each call creates a new independent allocation (new ID), even for the same content and class. A whole_class assignment automatically includes students who join before its deadline; selected recipients remain explicit. There are no student groups.",
         "operationId": "TeacherAssignmentsController_create",
         "parameters": [],
         "requestBody": {
@@ -931,6 +931,68 @@
           }
         ],
         "summary": "Status, attempts, best stars and points of each student for this assignment turn only",
+        "tags": [
+          "Teacher / Assignments"
+        ]
+      }
+    },
+    "/teacher/assignments/{id}/extend": {
+      "post": {
+        "description": "Only moves the deadline later. Cancelled or archived assignments cannot be reopened. Current class members are added when this is a whole-class assignment.",
+        "operationId": "TeacherAssignmentsController_extend",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExtendAssignmentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssignmentDetailDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid field, window, audience or unexpected property"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Teacher role required"
+          },
+          "404": {
+            "description": "Assignment missing or owned by another teacher"
+          },
+          "409": {
+            "description": "Assignment is cancelled/archived, or the new deadline is not later"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Extend an assignment deadline, including one whose window already ended",
         "tags": [
           "Teacher / Assignments"
         ]
@@ -1569,7 +1631,7 @@
               "whole_class",
               "selected"
             ],
-            "description": "whole_class fixes the recipients to the current members; selected uses studentIds"
+            "description": "whole_class includes current members and students who join before the window ends; selected uses studentIds"
           },
           "studentIds": {
             "description": "Required for selected, forbidden for whole_class. Must all be current members of the class.",
@@ -1678,7 +1740,7 @@
             "type": "string"
           },
           "recipients": {
-            "description": "Explicit recipients fixed at creation who are still active members of the class; recipientCount is the original audience size",
+            "description": "Recipients who are still active class members. A whole-class assignment also gains students who join before its deadline.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/RecipientDto"
@@ -1865,6 +1927,19 @@
           "assignmentId",
           "phase",
           "students"
+        ]
+      },
+      "ExtendAssignmentDto": {
+        "type": "object",
+        "properties": {
+          "endsAt": {
+            "type": "string",
+            "example": "2026-10-15T20:00:00+03:30",
+            "description": "New ISO 8601 deadline with UTC offset; must be later than the current deadline and in the future"
+          }
+        },
+        "required": [
+          "endsAt"
         ]
       },
       "FeedbackSummaryDto": {

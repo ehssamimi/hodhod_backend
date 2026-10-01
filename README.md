@@ -14,7 +14,7 @@ NestJS API with PostgreSQL. The teacher panel and student app are separate proje
 
 `GET /health` returns `{ "status": "ok" }`.
 
-In development, Swagger UI is available separately at `/docs/student`, `/docs/teacher`, and `/docs/admin`; their OpenAPI JSON files are at `/docs/<audience>/openapi.json`. All three contain shared health, email authentication, logout and GET /me. Only the admin specification includes PATCH /admin/users/{id}/role; only the student specification includes PATCH /me. There is a `users` database table, but **no user-list API yet**. Swagger is not exposed when `NODE_ENV=production`. When adding an API, include its module in the relevant audience specification and document its request, response, authentication, and errors in the same change.
+In development, Swagger UI is available separately at `/docs/student`, `/docs/teacher`, and `/docs/admin`; their OpenAPI JSON files are at `/docs/<audience>/openapi.json`. All three contain shared health, email authentication, logout and GET /me. Only the admin specification includes GET /admin/users and PATCH /admin/users/{id}/role; only the student specification includes PATCH /me. Swagger is not exposed when `NODE_ENV=production`. When adding an API, include its module in the relevant audience specification and document its request, response, authentication, and errors in the same change.
 
 ## Email sign-in (BE-03)
 
@@ -38,6 +38,10 @@ and role on every request. Tokens issued before BE-03 must sign in again to esta
 Use @Roles('teacher') or @Roles('admin') for role-specific routes and reuse
 ClassAccessService for class resources. An admin role is explicit; it does not
 automatically satisfy a teacher-only endpoint.
+
+GET /admin/users lists accounts newest first for the management panel. It supports
+role, case-insensitive email/display-name search, limit and offset; its paginated
+response includes the total match count and never exposes session/token state.
 
 PATCH /admin/users/:id/role accepts { "role": "teacher", "reason": "optional" }.
 Only an authenticated admin may call it. The role, corresponding profile, version
@@ -130,8 +134,9 @@ Timezone must be a named timezone accepted by the runtime (for example Asia/Tehr
 | GET | /teacher/assignments | فهرست تکلیف‌های خود معلم؛ فیلتر `classId`, `phase`, `limit`, `offset` |
 | GET | /teacher/assignments/:id | جزئیات همراه با گیرندگان |
 | POST | /teacher/assignments/:id/cancel | لغو تا پیش از پایان بازه؛ رکوردها می‌مانند و تکرار بی‌اثر است |
+| POST | /teacher/assignments/:id/extend | تمدید مهلت با `endsAt` تازه؛ تکلیف پایان‌یافته دوباره باز می‌شود، اما لغوشده/آرشیوشده نه |
 
-قواعد: کلاس باید مال همین معلم و فعال باشد (دیگری 404، آرشیو 409). محتوا باید منتشرشدهٔ نوع practice یا both با نسخهٔ منتشرشده باشد. زمان‌ها ISO 8601 با آفست (`Z` یا `+03:30`) هستند، `endsAt` باید در آینده و بعد از `startsAt` باشد و بازه حداکثر ۳۶۶ روز است؛ «اکنون» را ساعت دیتابیس تعیین می‌کند. `selected` فقط دانش‌آموزان عضو فعال همان کلاس را می‌پذیرد (تکراری یا غیرعضو 400). `whole_class` اعضای فعال لحظهٔ ساخت را در `assignment_recipients` ثبت می‌کند و کلاس بی‌دانش‌آموز 409 می‌دهد؛ گیرندگان بعداً تغییر نمی‌کنند و عضو تازه خودکار اضافه نمی‌شود (تصمیم باز شمارهٔ ۲ بخش ۷ طرح؛ با رکوردهای صریح هر دو سیاست ممکن می‌ماند). هر ساخت `id` تازه دارد، حتی برای همان محتوا و کلاس. گروه‌بندی وجود ندارد. `phase` از ساعت سرور محاسبه می‌شود: `upcoming`, `active`, `ended`, `cancelled`. ویرایش و تمدید بازه منتظر تصمیم باز شمارهٔ ۱ است و پیاده نشده؛ فهرست دانش‌آموز BE-12 و نتیجه/پیشرفت BE-11 و BE-14 هستند.
+قواعد: کلاس باید مال همین معلم و فعال باشد (دیگری 404، آرشیو 409). محتوا باید منتشرشدهٔ نوع practice یا both با نسخهٔ منتشرشده باشد. زمان‌ها ISO 8601 با آفست (`Z` یا `+03:30`) هستند، `endsAt` باید در آینده و بعد از `startsAt` باشد و بازه حداکثر ۳۶۶ روز است؛ «اکنون» را ساعت دیتابیس تعیین می‌کند. `selected` فقط دانش‌آموزان عضو فعال همان کلاس را می‌پذیرد و مخاطبانش ثابت‌اند. `whole_class` اعضای فعال را هنگام ساخت ثبت می‌کند و هر دانش‌آموزی که پیش از پایان مهلت بعداً به کلاس بپیوندد نیز خودکار گیرنده می‌شود. پس از پایان مهلت تلاش تازه بسته است؛ معلم می‌تواند فقط مهلت را به زمانی دیرتر و در آینده تمدید کند و تکلیف پایان‌یافته را دوباره باز کند. تکلیف لغوشده یا آرشیوشده قابل‌بازکردن نیست. هر ساخت `id` تازه دارد، گروه‌بندی وجود ندارد و `phase` از ساعت سرور محاسبه می‌شود: `upcoming`, `active`, `ended`, `cancelled`.
 
 ## نوبت‌های مستقل تکلیف (BE-11)
 
@@ -152,7 +157,7 @@ Timezone must be a named timezone accepted by the runtime (for example Asia/Tehr
 | GET | /assignments/mine | تکلیف‌های خود دانش‌آموز؛ فیلتر `phase` (`upcoming`/`active`/`ended`)، `limit`، `offset` |
 | GET | /assignments/mine/:id | یک نوبت از تکلیف‌های خودش |
 
-ترتیب: بازها (مهلت نزدیک‌تر اول)، سپس آتی، سپس پایان‌یافته (تازه‌ترین اول). هر ردیف: `assignmentId` (شناسهٔ نوبت)، کلاس، محتوا (`contentId`, `title`, `subject`, `unityId`, `version`, `available`)، `startsAt`/`endsAt`، `phase` از ساعت سرور، و وضعیت همین نوبت (`status`: `not_started`/`in_progress`/`passed`، `bestStars`، `attemptCount`، `points`، `passStars`/`maxStars`). فقط ردیف‌های همین `assignmentId` خوانده می‌شود؛ Adventure و نوبت‌های دیگر همان بازی اثری ندارند. قواعد نمایش: دانش‌آموز باید گیرندهٔ صریح باشد و همان کلاس را اکنون عضو باشد (با ترک یا تغییر کلاس، تکلیف‌های کلاس قبلی از فهرست او خارج می‌شوند ولی سوابق می‌مانند؛ این تفسیر با تصمیم باز شمارهٔ ۶ هم‌جهت است و اگر محصول تاریخچهٔ کلاس قبلی را بخواهد باید تغییر کند)؛ تکلیف لغوشده پنهان است؛ عضو تازهٔ کلاس مخاطب تکلیف‌های قبلی نیست (تصمیم باز ۲). اگر محتوا بعداً از انتشار خارج شود، نوبت در فهرست می‌ماند با `available=false` و `unityId=null`. شروع تلاش روی نوبت فعال با BE-14 است.
+ترتیب: بازها (مهلت نزدیک‌تر اول)، سپس آتی، سپس پایان‌یافته (تازه‌ترین اول). هر ردیف: `assignmentId` (شناسهٔ نوبت)، کلاس، محتوا (`contentId`, `title`, `subject`, `unityId`, `version`, `available`)، `startsAt`/`endsAt`، `phase` از ساعت سرور، و وضعیت همین نوبت (`status`: `not_started`/`in_progress`/`passed`، `bestStars`، `attemptCount`، `points`، `passStars`/`maxStars`). فقط ردیف‌های همین `assignmentId` خوانده می‌شود؛ Adventure و نوبت‌های دیگر همان بازی اثری ندارند. دانش‌آموز باید گیرنده و عضو فعلی همان کلاس باشد؛ با ترک یا تغییر کلاس، تکلیف‌های کلاس قبلی از فهرست او خارج می‌شوند ولی سوابق می‌مانند. عضو تازه به تکلیف‌های `whole_class` که مهلتشان نگذشته اضافه می‌شود، ولی به تکلیف `selected` نه. تکلیف لغوشده پنهان است. اگر محتوا بعداً از انتشار خارج شود، نوبت با `available=false` و `unityId=null` می‌ماند.
 
 ## ثبت تلاش، پیشرفت و دفتر امتیاز (BE-14، BE-15، BE-16)
 
@@ -162,7 +167,7 @@ Timezone must be a named timezone accepted by the runtime (for example Asia/Tehr
 | --- | --- | --- |
 | POST | /attempts | ثبت نتیجهٔ پایان‌یافتهٔ یک تلاش آنلاین: `attemptId` (شناسهٔ یکتای ساختهٔ کلاینت)، `contentId`، `context` (`adventure`/`assignment`)، `assignmentId` (فقط برای تکلیف)، `stars`، `durationSeconds` |
 
-**BE-14:** `attemptId` کلید یکتایی است. ثبت اول 201 می‌دهد؛ ارسال دوباره با همان شناسه و همان داده 200 با نتیجهٔ کاملاً یکسان و `duplicate=true` می‌دهد و چیزی نمی‌سازد؛ همان شناسه با داده‌ٔ متفاوت یا از دانش‌آموز دیگر 409 است. زمان دریافت را ساعت دیتابیس می‌گذارد و زمان شروع از `durationSeconds` به دست می‌آید. Adventure: محتوا باید روی نقشه و برای این دانش‌آموز باز باشد (قفل 403، خارج از نقشه 404). تکلیف: دانش‌آموز باید گیرندهٔ همان نوبت و عضو فعلی کلاس باشد، تکلیف لغو نشده و داخل بازه باشد و محتوا هنوز منتشر باشد (خارج بازه یا لغو 409؛ **فرض پیاده‌سازی: پس از پایان بازه تلاش تازه رد می‌شود** — تصمیم باز شمارهٔ ۱). `stars` نباید از سقف قانون بیشتر باشد.
+**BE-14:** `attemptId` کلید یکتایی است. ثبت اول 201 می‌دهد؛ ارسال دوباره با همان شناسه و همان داده 200 با نتیجهٔ کاملاً یکسان و `duplicate=true` می‌دهد و چیزی نمی‌سازد؛ همان شناسه با داده‌ٔ متفاوت یا از دانش‌آموز دیگر 409 است. زمان دریافت را ساعت دیتابیس می‌گذارد و زمان شروع از `durationSeconds` به دست می‌آید. Adventure: محتوا باید روی نقشه و برای این دانش‌آموز باز باشد (قفل 403، خارج از نقشه 404). تکلیف: دانش‌آموز باید گیرندهٔ همان نوبت و عضو فعلی کلاس باشد، تکلیف لغو نشده و داخل بازه باشد و محتوا هنوز منتشر باشد؛ پس از پایان مهلت تلاش تازه 409 می‌گیرد تا معلم مهلت را تمدید کند. `stars` نباید از سقف قانون بیشتر باشد.
 
 **BE-15:** پیشرفت هر زمینه جداست (`adventure_progress` یا `assignment_progress` همان `assignmentId`). `bestStars` فقط با نتیجهٔ بهتر بالا می‌رود، تعداد تلاش هر بار زیاد می‌شود و گذراندن با `passStars` قانون (پیش‌فرض ۳ از ۵) تعیین می‌شود؛ زمان اولین گذراندن ثابت می‌ماند.
 
@@ -177,7 +182,7 @@ Timezone must be a named timezone accepted by the runtime (for example Asia/Tehr
 | GET | /teacher/feedback | teacher | نظر دانش‌آموزانی که همین الان در کلاس فعال همین معلم‌اند؛ فیلتر `contentId`, `classId` |
 | GET | /admin/feedback | admin | همهٔ نظرها با خلاصهٔ تجمیعی (تعداد، میانگین، توزیع)؛ فیلتر `contentId` |
 
-هر دانش‌آموز برای هر بازی یک نظر دارد که بین Adventure و تکلیف مشترک است؛ ثبت دوباره با همان مقدار 200 و مقدار متفاوت 409 می‌دهد. **فرض پیاده‌سازی برای تصمیم باز شمارهٔ ۳:** نظر پس از ثبت قابل‌ویرایش نیست (طبق «بازخورد یک‌باره» در APP-02) و مشترک بین دو بخش است. شرط «قبلاً بازی کرده باشد» برای جلوگیری از نظر دادن به بازی‌های ناخوانده افزوده شد. نظر در جدول جدا می‌ماند و هیچ کد امتیاز، پیشرفت یا رتبه‌بندی آن را نمی‌خواند. ایمیل هیچ‌جا برنمی‌گردد؛ معلمِ قبلی پس از ترک دانش‌آموز نظر او را نمی‌بیند.
+هر دانش‌آموز برای هر بازی یک نظر جاری دارد که بین Adventure و تکلیف مشترک است. اولین نظر می‌تواند در اپ اجباری باشد؛ پس از اجرای دوبارهٔ بازی، ثبت نظر اختیاری است و مقدار تازه جای مقدار قبلی را می‌گیرد. شرط «قبلاً بازی کرده باشد» جلوی نظر دادن به بازی اجرا‌نشده را می‌گیرد. نظر هیچ اثری بر امتیاز، پیشرفت یا رتبه‌بندی ندارد؛ معلم قبلی پس از ترک دانش‌آموز آن را نمی‌بیند.
 
 ## گزارش معلم (BE-13)
 
@@ -201,7 +206,7 @@ Timezone must be a named timezone accepted by the runtime (for example Asia/Tehr
 | --- | --- | --- |
 | GET | /streak | (student) `currentDays`، `bestDays`، `lastActivityDate`، `activeToday`، `timezone`، `today`، `recentDays` (۳۰ روز اخیر) |
 
-هر تلاش ثبت‌شده در `POST /attempts` بخشی به نام `streak` در پاسخ دارد (`activityDate`, `newDay`, `currentDays`, `bestDays`, `bonusPoints`). «روز» تاریخ تقویمی در منطقهٔ زمانی دانش‌آموز در لحظهٔ دریافت توسط سرور است (نه ساعت دستگاه) و منطقهٔ زمانیِ آن لحظه کنار روز ذخیره می‌شود؛ تغییر بعدی منطقه فقط روی تلاش‌های بعدی اثر دارد. Adventure و تکلیف یک روز مشترک می‌سازند و هر روز حداکثر یک بار ثبت (و پاداش) می‌شود، حتی با درخواست‌های هم‌زمان. روز متوالی استریک را زیاد می‌کند، فاصلهٔ یک روز کامل آن را از ۱ شروع می‌کند و `bestDays` می‌ماند؛ هنگام خواندن، استریکی که یک روز محلی کامل جا انداخته صفر نمایش داده می‌شود. **فرض‌های پیاده‌سازی برای تصمیم باز شمارهٔ ۴:** پیش‌فرض فقط نتیجهٔ گذرانده (`stars >= passStars`) روز را می‌سازد؛ با `STREAK_QUALIFY=any` هر تلاش پایان‌یافته. **پاداش استریک تصمیم محصول است و ساخته نشده:** فقط اگر `STREAK_DAILY_POINTS` تنظیم شده باشد، برای هر روز تازه یک ردیف `streak` در دفتر امتیاز ثبت می‌شود.
+هر تلاش ثبت‌شده در `POST /attempts` وضعیت استریک را برمی‌گرداند. Adventure فقط با نتیجهٔ گذرانده (پیش‌فرض حداقل ۳ ستاره) روز را فعال می‌کند؛ در تمرین معلم هر تلاش پایان‌یافته، حتی با صفر ستاره یا تمرین بدون مفهوم ستاره، روز استریک را حفظ می‌کند. Adventure و تکلیف یک روز مشترک می‌سازند و هر روز حداکثر یک بار ثبت و پاداش داده می‌شود. روز بر اساس منطقهٔ زمانی دانش‌آموز هنگام دریافت محاسبه و همان منطقه کنار روز ذخیره می‌شود. پاداش فقط در صورت تنظیم `STREAK_DAILY_POINTS` ثبت می‌شود.
 
 ## رتبه‌بندی (BE-20)
 

@@ -3,6 +3,20 @@
 const secretProblem = (env: NodeJS.ProcessEnv, name: string): string | undefined =>
   !env[name] || env[name]!.length < 32 ? `${name} must contain at least 32 characters` : undefined;
 
+const integerProblem = (env: NodeJS.ProcessEnv, name: string, minimum: number, maximum: number): string | undefined => {
+  if (env[name] === undefined) return undefined;
+  const value = Number(env[name]);
+  return Number.isSafeInteger(value) && value >= minimum && value <= maximum
+    ? undefined : `${name} must be an integer from ${minimum} to ${maximum}`;
+};
+
+const starPointsProblem = (raw: string | undefined): string | undefined => {
+  if (raw === undefined) return undefined;
+  const values = raw.split(',').map(part => Number(part.trim()));
+  return values.length <= 11 && values.every(value => Number.isInteger(value) && value >= 0 && value <= 100000)
+    ? undefined : 'SCORING_STAR_POINTS is malformed';
+};
+
 export function productionConfigProblems(env: NodeJS.ProcessEnv = process.env): string[] {
   // "development" and "test" are the only relaxed modes; an unset NODE_ENV is treated as production.
   if (env.NODE_ENV === 'development' || env.NODE_ENV === 'test') return [];
@@ -18,10 +32,13 @@ export function productionConfigProblems(env: NodeJS.ProcessEnv = process.env): 
   if (env.DATABASE_PASSWORD && env.DATABASE_PASSWORD.length < 16) problems.push('DATABASE_PASSWORD must contain at least 16 characters');
   if (env.SMTP_ALLOW_INSECURE_LOCAL === 'true') problems.push('SMTP_ALLOW_INSECURE_LOCAL must not be true');
   if (Boolean(env.SMTP_USER) !== Boolean(env.SMTP_PASSWORD)) problems.push('SMTP_USER and SMTP_PASSWORD must be set together');
-  for (const name of ['SCORING_STAR_POINTS', 'STREAK_DAILY_POINTS']) {
-    // Reward tables are a product decision: warn by failing only on malformed values.
-    if (env[name] !== undefined && !/^[0-9, ]+$/.test(env[name]!)) problems.push(`${name} is malformed`);
-  }
+  problems.push(starPointsProblem(env.SCORING_STAR_POINTS));
+  problems.push(integerProblem(env, 'STREAK_DAILY_POINTS', 0, 100000));
+  problems.push(integerProblem(env, 'SCORING_DEFAULT_MAX_STARS', 1, 10));
+  problems.push(integerProblem(env, 'SCORING_DEFAULT_PASS_STARS', 0, 10));
+  problems.push(integerProblem(env, 'ATTEMPTS_PER_MINUTE', 1, 600));
+  problems.push(integerProblem(env, 'ATTEMPT_MIN_PLAUSIBLE_SECONDS', 1, 600));
+  problems.push(integerProblem(env, 'SMTP_PORT', 1, 65535));
   return problems.filter((problem): problem is string => Boolean(problem));
 }
 

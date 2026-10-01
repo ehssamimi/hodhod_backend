@@ -11,7 +11,7 @@ export class CreateAssignmentDto {
   classId!: string;
   @ApiProperty({ format: 'uuid', description: 'Published practice content (kind practice or both)' }) @IsUUID()
   contentId!: string;
-  @ApiProperty({ enum: ['whole_class', 'selected'], description: 'whole_class fixes the recipients to the current members; selected uses studentIds' }) @IsIn(['whole_class', 'selected'])
+  @ApiProperty({ enum: ['whole_class', 'selected'], description: 'whole_class includes current members and students who join before the window ends; selected uses studentIds' }) @IsIn(['whole_class', 'selected'])
   audience!: 'whole_class' | 'selected';
   @ApiPropertyOptional({ type: [String], format: 'uuid', description: 'Required for selected, forbidden for whole_class. Must all be current members of the class.' })
   @IsOptional() @IsArray() @ArrayMinSize(1) @ArrayMaxSize(200) @ArrayUnique() @IsUUID('all', { each: true })
@@ -20,6 +20,12 @@ export class CreateAssignmentDto {
   @IsOptional() @Matches(isoWithOffset)
   startsAt?: string;
   @ApiProperty({ example: '2026-10-08T20:00:00+03:30', description: 'ISO 8601 with UTC offset; must be in the future, after startsAt, and at most 366 days after it' })
+  @Matches(isoWithOffset)
+  endsAt!: string;
+}
+
+export class ExtendAssignmentDto {
+  @ApiProperty({ example: '2026-10-15T20:00:00+03:30', description: 'New ISO 8601 deadline with UTC offset; must be later than the current deadline and in the future' })
   @Matches(isoWithOffset)
   endsAt!: string;
 }
@@ -56,7 +62,7 @@ export class RecipientDto {
 }
 
 export class AssignmentDetailDto extends AssignmentDto {
-  @ApiProperty({ type: [RecipientDto], description: 'Explicit recipients fixed at creation who are still active members of the class; recipientCount is the original audience size' }) recipients!: RecipientDto[];
+  @ApiProperty({ type: [RecipientDto], description: 'Recipients who are still active class members. A whole-class assignment also gains students who join before its deadline.' }) recipients!: RecipientDto[];
 }
 
 export class TurnProgressDto {

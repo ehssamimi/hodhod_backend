@@ -1,5 +1,5 @@
-import { Body, Controller, Get, HttpCode, Injectable, Module, NotFoundException, Param, ParseUUIDPipe, Post, Query, Res, ConflictException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
-import { ApiBadRequestResponse, ApiBearerAuth, ApiConflictResponse, ApiCreatedResponse, ApiForbiddenResponse, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
+import { Body, Controller, Get, HttpCode, Injectable, Module, NotFoundException, Param, ParseUUIDPipe, Post, Query, Res, ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import { ApiBadRequestResponse, ApiBearerAuth, ApiCreatedResponse, ApiForbiddenResponse, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
 import { DataSource } from 'typeorm';
 import { CurrentUser, Roles } from '../auth/security';
 import { User } from '../users/user.entity';
@@ -12,7 +12,7 @@ const item = `SELECT f.content_id AS "contentId", c.title, f.student_id AS "stud
 export class FeedbackService {
   constructor(private readonly source: DataSource) {}
 
-  // The rating is one row per (student, game), shared by every context, and is never edited.
+  // The latest rating is one editable row per (student, game), shared by every context.
   // It lives in its own table and is never read by scoring, progress or ranking code.
   submit(actor: User, contentId: string, rating: number): Promise<{ created: boolean; feedback: FeedbackDto }> {
     return this.source.transaction(async manager => {
@@ -21,12 +21,16 @@ export class FeedbackService {
       if (user.role !== 'student') throw new ForbiddenException('Student role required');
       const played = await manager.query('SELECT 1 FROM game_attempts WHERE student_id=$1 AND content_id=$2 LIMIT 1', [actor.id, contentId]);
       if (!played.length) throw new NotFoundException('Play this game before rating it');
-      const inserted = await manager.query(`INSERT INTO game_feedback(student_id,content_id,rating) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING
+      await manager.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 1790553617))', [actor.id + ':' + contentId]);
+      const current = (await manager.query('SELECT rating FROM game_feedback WHERE student_id=$1 AND content_id=$2 FOR UPDATE', [actor.id, contentId]))[0];
+      if (!current) {
+        const inserted = await manager.query(`INSERT INTO game_feedback(student_id,content_id,rating) VALUES ($1,$2,$3)
+          RETURNING content_id AS "contentId", rating, created_at AS "createdAt"`, [actor.id, contentId, rating]);
+        return { created: true, feedback: inserted[0] };
+      }
+      const updated = await manager.query(`UPDATE game_feedback SET rating=$3 WHERE student_id=$1 AND content_id=$2
         RETURNING content_id AS "contentId", rating, created_at AS "createdAt"`, [actor.id, contentId, rating]);
-      if (inserted.length) return { created: true, feedback: inserted[0] };
-      const current = (await manager.query('SELECT content_id AS "contentId", rating, created_at AS "createdAt" FROM game_feedback WHERE student_id=$1 AND content_id=$2', [actor.id, contentId]))[0];
-      if (current.rating !== rating) throw new ConflictException('You already rated this game; the rating cannot be changed');
-      return { created: false, feedback: current };
+      return { created: false, feedback: updated[0][0] };
     });
   }
 
@@ -69,12 +73,11 @@ export class StudentFeedbackController {
 
   @Post()
   @HttpCode(201)
-  @ApiOperation({ summary: 'Rate a game you played, 1 to 4, once', description: 'One rating per game for the whole account (Adventure and assignments share it). It cannot be changed afterwards; resending the same rating returns 200. It never affects stars, points or ranking.' })
+  @ApiOperation({ summary: 'Rate a game you played, or update your previous rating', description: 'The app may require the first rating once; later plays may submit another rating optionally. The latest 1-4 value replaces the previous one and never affects stars, points or ranking.' })
   @ApiCreatedResponse({ type: FeedbackDto })
-  @ApiOkResponse({ type: FeedbackDto, description: 'Same rating already recorded' })
+  @ApiOkResponse({ type: FeedbackDto, description: 'Existing rating updated or submitted again' })
   @ApiBadRequestResponse({ description: 'Rating outside 1 to 4, invalid UUID or unexpected property' })
   @ApiNotFoundResponse({ description: 'You have not played this game' })
-  @ApiConflictResponse({ description: 'A different rating already exists' })
   async submit(@CurrentUser() user: User, @Body() input: SubmitFeedbackDto, @Res({ passthrough: true }) response: { status(code: number): unknown }) {
     const result = await this.feedback.submit(user, input.contentId, input.rating);
     if (!result.created) response.status(200);

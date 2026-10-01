@@ -31,6 +31,11 @@ describe('production configuration', () => {
     ['insecure local mail', { SMTP_ALLOW_INSECURE_LOCAL: 'true' }, 'SMTP_ALLOW_INSECURE_LOCAL'],
     ['half SMTP login', { SMTP_USER: 'user' }, 'together'],
     ['malformed reward table', { SCORING_STAR_POINTS: '0;x' }, 'malformed'],
+    ['out-of-range reward', { SCORING_STAR_POINTS: '0,100001' }, 'malformed'],
+    ['malformed streak reward', { STREAK_DAILY_POINTS: '1,2' }, 'STREAK_DAILY_POINTS'],
+    ['invalid star ceiling', { SCORING_DEFAULT_MAX_STARS: '0' }, 'SCORING_DEFAULT_MAX_STARS'],
+    ['invalid attempt limit', { ATTEMPTS_PER_MINUTE: 'nope' }, 'ATTEMPTS_PER_MINUTE'],
+    ['invalid SMTP port', { SMTP_PORT: '70000' }, 'SMTP_PORT'],
   ])('rejects %s', (_name, override, expected) => {
     const problems = productionConfigProblems({ ...good, ...override } as NodeJS.ProcessEnv);
     expect(problems.some(problem => problem.includes(expected))).toBe(true);

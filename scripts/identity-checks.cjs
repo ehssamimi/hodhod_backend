@@ -99,6 +99,18 @@ module.exports = async function identityChecks(dataSource) {
     // Bootstrap fixture only, on the disposable test database.
     await dataSource.query("UPDATE users SET role='admin',auth_version=auth_version+1 WHERE id=$1", [admin.user.id]);
     admin = await login('identity-admin@example.com');
+    const userList = await request('/admin/users?role=student&search=identity-&limit=1&offset=0', { token:admin.accessToken });
+    assert.equal(userList.status, 200, JSON.stringify(userList.data));
+    assert.ok(userList.data.total >= 2);
+    assert.equal(userList.data.items.length, 1);
+    assert.equal(userList.data.limit, 1);
+    assert.equal(userList.data.offset, 0);
+    assert.equal(userList.data.items[0].role, 'student');
+    assert.equal(Object.hasOwn(userList.data.items[0], 'authVersion'), false);
+    assert.equal((await request('/admin/users?role=owner', { token:admin.accessToken })).status, 400);
+    assert.equal((await request('/admin/users', { token:student.accessToken })).status, 403);
+    assert.equal((await request('/admin/users')).status, 401);
+    console.log('PASS admin user list filtering, pagination, safe projection and access control');
     assert.equal((await change(admin, admin.user.id, 'student')).status, 409);
     assert.equal((await change(admin, randomUUID(), 'teacher')).status, 404);
     assert.equal((await change(admin, 'invalid-id', 'teacher')).status, 400);
@@ -238,6 +250,7 @@ module.exports = async function identityChecks(dataSource) {
       assert.equal(Boolean(doc.data.paths['/me'].patch), audience === 'student');
       assert.ok(doc.data.components.securitySchemes.bearer);
       assert.deepEqual(doc.data.paths['/me'].get.security, [{ bearer:[] }]);
+      assert.equal(Boolean(doc.data.paths['/admin/users']), audience === 'admin');
       assert.equal(Boolean(doc.data.paths['/admin/users/{id}/role']), audience === 'admin');
       assert.equal(Boolean(doc.data.paths['/test-access/teacher']), false);
     }

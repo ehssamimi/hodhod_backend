@@ -782,7 +782,7 @@
     },
     "/feedback": {
       "post": {
-        "description": "One rating per game for the whole account (Adventure and assignments share it). It cannot be changed afterwards; resending the same rating returns 200. It never affects stars, points or ranking.",
+        "description": "The app may require the first rating once; later plays may submit another rating optionally. The latest 1-4 value replaces the previous one and never affects stars, points or ranking.",
         "operationId": "StudentFeedbackController_submit",
         "parameters": [],
         "requestBody": {
@@ -797,7 +797,7 @@
         },
         "responses": {
           "200": {
-            "description": "Same rating already recorded",
+            "description": "Existing rating updated or submitted again",
             "content": {
               "application/json": {
                 "schema": {
@@ -827,9 +827,6 @@
           },
           "404": {
             "description": "You have not played this game"
-          },
-          "409": {
-            "description": "A different rating already exists"
           }
         },
         "security": [
@@ -837,7 +834,7 @@
             "bearer": []
           }
         ],
-        "summary": "Rate a game you played, 1 to 4, once",
+        "summary": "Rate a game you played, or update your previous rating",
         "tags": [
           "Student / Feedback"
         ]

@@ -49,18 +49,22 @@ module.exports = async ({ source, request, login, teacher, admin }) => {
   assert.deepEqual([first.contentId, first.rating], [game, 3]);
   assert.ok(first.createdAt);
   assert.equal(await performance(), before, 'feedback does not touch stars, progress or points');
-  // One rating per game: same value is a no-op, a different one is refused.
+  // One current rating per game: later optional ratings may replace it.
   const again = await rate(s1, { contentId: game, rating: 3 });
   assert.equal(again.status, 200);
   assert.deepEqual(again.data, first);
   const changed = await rate(s1, { contentId: game, rating: 4 });
-  assert.equal(changed.status, 409);
-  assert.equal(ok(await call('/feedback/' + game)).rating, 3);
+  assert.equal(changed.status, 200);
+  assert.equal(changed.data.rating, 4);
+  assert.equal(changed.data.createdAt, first.createdAt, 'editing preserves the first-rating time');
+  assert.equal(ok(await call('/feedback/' + game)).rating, 4);
   const race = await Promise.all([rate(s2, { contentId: game, rating: 4 }), rate(s2, { contentId: game, rating: 4 }), rate(s2, { contentId: game, rating: 1 })]);
   assert.equal(race.filter(r => r.status === 201).length, 1);
+  assert.equal(race.filter(r => r.status === 200).length, 2);
+  ok(await rate(s2, { contentId: game, rating: 4 }));
   assert.equal((await source.query('SELECT count(*)::int AS n FROM game_feedback WHERE student_id=$1 AND content_id=$2', [s2.user.id, game]))[0].n, 1);
   assert.equal(ok(await call('/feedback/' + game, 'GET', undefined, s3.accessToken)).rating, null, 'ratings are private per student');
-  assert.equal((await source.query('SELECT rating FROM game_feedback WHERE student_id=$1', [s1.user.id]))[0].rating, 3);
+  assert.equal((await source.query('SELECT rating FROM game_feedback WHERE student_id=$1', [s1.user.id]))[0].rating, 4);
   await assert.rejects(() => source.query('INSERT INTO game_feedback(student_id,content_id,rating) VALUES ($1,$2,5)', [s3.user.id, game]), e => (e.driverError?.code ?? e.code) === '23514');
 
   // Teacher: only current students of their own active classes; no emails.
@@ -79,9 +83,9 @@ module.exports = async ({ source, request, login, teacher, admin }) => {
 
   // Admin: aggregate plus items.
   const adminView = ok(await call('/admin/feedback?contentId=' + game, 'GET', undefined, admin.accessToken));
-  assert.deepEqual([adminView.summary.count, adminView.summary.distribution[3], adminView.summary.distribution[4]], [2, 1, 1]);
-  assert.equal(adminView.summary.average, 3.5);
+  assert.deepEqual([adminView.summary.count, adminView.summary.distribution[3], adminView.summary.distribution[4]], [2, 0, 2]);
+  assert.equal(adminView.summary.average, 4);
   assert.equal(adminView.items.length, 2);
   assert.equal(ok(await call('/admin/feedback?contentId=' + unplayed, 'GET', undefined, admin.accessToken)).summary.average, null);
-  console.log('PASS BE-17 feedback 1-4: one rating per game, immutable, independent of scoring, visible to the right teacher and admin');
+  console.log('PASS BE-17 feedback 1-4: one editable current rating per game, independent of scoring, visible to the right teacher and admin');
 };

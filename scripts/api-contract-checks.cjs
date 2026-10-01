@@ -33,7 +33,7 @@ module.exports = async ({ request }) => {
   const expected = {
     student: ['/classes/mine', '/classes/join', '/content', '/adventure/map', '/assignments/mine', '/attempts', '/feedback', '/streak', '/leaderboards/global', '/leaderboards/class'],
     teacher: ['/teacher/classes', '/teacher/content', '/teacher/assignments', '/teacher/feedback', '/teacher/reports/students/{studentId}'],
-    admin: ['/admin/content', '/admin/adventure/path', '/admin/rules', '/admin/users/{id}/role', '/admin/feedback', '/admin/suspicious-events', '/admin/overview', '/admin/audit'],
+    admin: ['/admin/content', '/admin/adventure/path', '/admin/rules', '/admin/users', '/admin/users/{id}/role', '/admin/feedback', '/admin/suspicious-events', '/admin/overview', '/admin/audit'],
   };
   for (const [audience, paths] of Object.entries(expected)) for (const p of paths) assert.ok(docs[audience].paths[p], `${p} missing on ${audience}`);
   assert.equal(Object.keys(docs.student.paths).some(p => p.startsWith('/teacher/') || p.startsWith('/admin/')), false);

@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
 import { User } from '../users/user.entity';
-import { AssignmentDetailDto, AssignmentDto, AssignmentProgressDto, CreateAssignmentDto, ListAssignmentsDto } from './assignments.dto';
+import { AssignmentDetailDto, AssignmentDto, AssignmentProgressDto, CreateAssignmentDto, ExtendAssignmentDto, ListAssignmentsDto } from './assignments.dto';
 
 const MAX_WINDOW_MS = 366 * 24 * 3600 * 1000;
 
@@ -113,6 +113,31 @@ export class AssignmentsService {
         LEFT JOIN assignment_progress p ON p.assignment_id=r.assignment_id AND p.student_id=r.student_id
         WHERE r.assignment_id=$1 ORDER BY u.display_name NULLS LAST, r.student_id`, [id, found[0].class_id]);
       return { assignmentId: id, phase: found[0].phase, students };
+    });
+  }
+
+  extend(actor: User, id: string, input: ExtendAssignmentDto): Promise<AssignmentDetailDto> {
+    const parsed = Date.parse(input.endsAt);
+    if (Number.isNaN(parsed)) throw new BadRequestException('Invalid date');
+    const endsAt = new Date(parsed);
+    return this.authorized(actor, async manager => {
+      const rows = await manager.query(`SELECT status, class_id, audience, starts_at, ends_at,
+          clock_timestamp() AS now
+        FROM assignments WHERE id=$1 AND teacher_id=$2 FOR UPDATE`, [id, actor.id]);
+      if (!rows.length) throw new NotFoundException('Assignment not found');
+      const assignment = rows[0];
+      if (assignment.status !== 'scheduled') throw new ConflictException('Cancelled or archived assignments cannot be extended');
+      if (endsAt.getTime() <= assignment.ends_at.getTime()) throw new ConflictException('The new deadline must be later than the current deadline');
+      if (endsAt.getTime() <= assignment.now.getTime()) throw new BadRequestException('endsAt must be in the future');
+      if (endsAt.getTime() - assignment.starts_at.getTime() > MAX_WINDOW_MS) throw new BadRequestException('The window can be at most 366 days');
+      await manager.query('UPDATE assignments SET ends_at=$2 WHERE id=$1', [id, endsAt]);
+      if (assignment.audience === 'whole_class') {
+        await manager.query(`INSERT INTO assignment_recipients(assignment_id,student_id)
+          SELECT $1,m.student_id FROM class_memberships m
+          WHERE m.class_id=$2 AND m.ended_at IS NULL
+          ON CONFLICT DO NOTHING`, [id, assignment.class_id]);
+      }
+      return this.detail(manager, actor.id, id);
     });
   }
 

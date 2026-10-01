@@ -8,10 +8,10 @@ export interface StreakOutcome {
   bonusPoints: number;
 }
 
-// STREAK_QUALIFY=passed (default) counts only results that reach the pass line;
-// STREAK_QUALIFY=any counts every finished attempt. Product decision 4 is still open.
-export function qualifies(stars: number, passStars: number): boolean {
-  return process.env.STREAK_QUALIFY === 'any' ? true : stars >= passStars;
+// Adventure needs a passing result. Any completed teacher assignment counts, including
+// activities whose design has no meaningful stars.
+export function qualifies(context: 'adventure' | 'assignment', stars: number, passStars: number): boolean {
+  return context === 'assignment' || stars >= passStars;
 }
 
 // Points for a newly earned activity day; unset means no streak reward (values are not decided).

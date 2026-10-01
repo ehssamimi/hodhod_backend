@@ -58,7 +58,7 @@ module.exports = async ({ source, request, login, teacher, admin }) => {
   assert.equal((await post({ ...base, classId: scratch.id })).status, 409);
   assert.equal((await source.query('SELECT 1 FROM assignments WHERE class_id = ANY($1)', [[foreign.id, empty.id, scratch.id]])).length, 0);
 
-  // Whole class snapshots members; selected stores only the ticked students.
+  // Whole class starts with current members and grows when students join; selected stays fixed.
   const whole = ok(await post(base), 201);
   assert.deepEqual([whole.audience, whole.status, whole.phase, whole.recipientCount, whole.classId, whole.contentId], ['whole_class', 'scheduled', 'active', 2, cls.id, practice]);
   assert.deepEqual(whole.recipients.map(r => r.studentId).sort(), [s1.user.id, s2.user.id].sort());
@@ -70,9 +70,11 @@ module.exports = async ({ source, request, login, teacher, admin }) => {
   const again = ok(await post(base), 201);
   assert.notEqual(again.id, whole.id);
   assert.equal((await source.query('SELECT count(*)::int AS n FROM assignments WHERE class_id=$1 AND content_id=$2', [cls.id, practice]))[0].n, 2);
-  // A student who joins later is not a recipient (recipients are fixed at creation).
   await join(s3, cls);
-  assert.equal(ok(await call('/teacher/assignments/' + whole.id)).recipientCount, 2);
+  const expanded = ok(await call('/teacher/assignments/' + whole.id));
+  assert.equal(expanded.recipientCount, 3);
+  assert.deepEqual(expanded.recipients.map(r => r.studentId).sort(), [s1.user.id, s2.user.id, s3.user.id].sort());
+  assert.equal(ok(await call('/teacher/assignments/' + selected.id)).recipientCount, 1, 'selected recipients stay fixed');
   assert.equal(ok(await post(base), 201).recipientCount, 3);
   // Concurrent creation makes independent rows.
   const race = await Promise.all([post(base), post(base), post(base)]);
@@ -95,15 +97,28 @@ module.exports = async ({ source, request, login, teacher, admin }) => {
 
   // Cancel keeps records, is idempotent, and is refused once the window ended.
   const cancelled = ok(await call(`/teacher/assignments/${whole.id}/cancel`, 'POST'));
-  assert.deepEqual([cancelled.status, cancelled.phase, cancelled.recipientCount], ['cancelled', 'cancelled', 2]);
+  assert.deepEqual([cancelled.status, cancelled.phase, cancelled.recipientCount], ['cancelled', 'cancelled', 3]);
   assert.deepEqual(ok(await call(`/teacher/assignments/${whole.id}/cancel`, 'POST')), cancelled);
   assert.deepEqual(ok(await call('/teacher/assignments?classId=' + cls.id + '&phase=cancelled')).map(a => a.id), [whole.id]);
   await source.query("UPDATE assignments SET starts_at=now()-interval '2 days', ends_at=now()-interval '1 day' WHERE id=$1", [again.id]);
   assert.equal(ok(await call('/teacher/assignments/' + again.id)).phase, 'ended');
   assert.equal((await call(`/teacher/assignments/${again.id}/cancel`, 'POST')).status, 409);
 
-  // A stale teacher session or demoted teacher cannot create assignments.
+  // Ended assignments can be extended; cancelled assignments cannot be reopened.
+  const extend = (assignment, endsAt, token = teacher.accessToken) => call(`/teacher/assignments/${assignment.id}/extend`, 'POST', { endsAt }, token);
+  assert.equal((await extend(again, hours(48), other.accessToken)).status, 404);
+  assert.equal((await call(`/teacher/assignments/${again.id}/extend`, 'POST', { endsAt: 'tomorrow' })).status, 400);
+  assert.equal((await extend(again, hours(-48))).status, 409, 'deadline only moves later');
+  assert.equal((await extend(again, hours(24 * 400))).status, 400, 'maximum total window still applies');
+  const reopened = ok(await extend(again, hours(48)));
+  assert.equal(reopened.phase, 'active');
+  assert.equal(reopened.recipientCount, 3);
+  assert.ok(new Date(reopened.endsAt) > new Date());
+  assert.equal((await extend(cancelled, hours(72))).status, 409, 'cancelled assignment stays cancelled');
+  assert.equal((await call(`/teacher/assignments/${randomUUID()}/extend`, 'POST', { endsAt: hours(48) })).status, 404);
+
   await source.query("UPDATE users SET role='student',auth_version=auth_version+1 WHERE id=$1", [other.user.id]);
   assert.equal((await post({ ...base, classId: foreign.id }, other.accessToken)).status, 401);
-  console.log('PASS BE-10 teacher assignments: published practice only, whole-class snapshot, selected students, windows, independent allocations and ownership');
+  // A stale teacher session or demoted teacher cannot create assignments.
+  console.log('PASS BE-10 teacher assignments: dynamic whole-class recipients, selected students, extension, windows, independent allocations and ownership');
 };

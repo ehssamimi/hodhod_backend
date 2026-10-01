@@ -54,6 +54,11 @@ export class MembershipsService {
       // clock_timestamp (not transaction-start now()) remains ordered after lock waits.
       await manager.query('UPDATE class_memberships SET ended_at=clock_timestamp() WHERE student_id=$1 AND ended_at IS NULL', [actor.id]);
       await manager.query('INSERT INTO class_memberships(class_id,student_id,joined_at) VALUES ($1,$2,clock_timestamp())', [classId, actor.id]);
+      await manager.query(`INSERT INTO assignment_recipients(assignment_id,student_id)
+        SELECT a.id,$2 FROM assignments a
+        WHERE a.class_id=$1 AND a.audience='whole_class' AND a.status='scheduled'
+          AND a.ends_at>clock_timestamp()
+        ON CONFLICT DO NOTHING`, [classId, actor.id]);
       return this.current(manager, actor.id);
     });
   }

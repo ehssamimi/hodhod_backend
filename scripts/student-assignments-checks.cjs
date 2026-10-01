@@ -103,10 +103,11 @@ module.exports = async ({ source, request, login, teacher, admin }) => {
   ok(await call('/classes/leave', 'POST'));
   assert.deepEqual(ok(await call('/assignments/mine')), []);
   await join(s1, clsB);
-  // Recipients are fixed at creation, so the earlier class-B turn does not include the newcomer; a new one does.
-  assert.deepEqual(ok(await call('/assignments/mine')), []);
+  // Joining a class adds the student to whole-class turns whose deadlines have not passed.
+  assert.deepEqual(ok(await call('/assignments/mine')).map(a => a.assignmentId), [bAssignment.id]);
   const newer = await assign({ classId: clsB.id, contentId: game, audience: 'whole_class', endsAt: hours(48) });
-  assert.deepEqual(ok(await call('/assignments/mine')).map(a => a.assignmentId), [newer.id]);
+  const classBTurns = ok(await call('/assignments/mine')).map(a => a.assignmentId);
+  assert.deepEqual(new Set(classBTurns), new Set([newer.id, bAssignment.id]));
   assert.equal((await source.query('SELECT count(*)::int AS n FROM assignment_progress WHERE student_id=$1', [s1.user.id]))[0].n, 2);
   console.log('PASS BE-12 student assignment list: own turns only, window/phase, per-turn status, independent of Adventure and class changes');
 };
