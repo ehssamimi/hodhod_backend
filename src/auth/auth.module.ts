@@ -9,6 +9,7 @@ import { EmailService } from './email.service';
 import { OtpService } from './otp.service';
 import { AccessGuard } from './access.guard';
 import { ClassAccessService } from './class-access.service';
+import { PasswordService } from './password.service';
 
 @Module({
   imports: [
@@ -19,7 +20,7 @@ import { ClassAccessService } from './class-access.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, EmailService, OtpService, ClassAccessService, { provide: APP_GUARD, useClass: AccessGuard }],
-  exports: [ClassAccessService],
+  providers: [AuthService, EmailService, OtpService, PasswordService, ClassAccessService, { provide: APP_GUARD, useClass: AccessGuard }],
+  exports: [AuthService, ClassAccessService],
 })
 export class AuthModule {}

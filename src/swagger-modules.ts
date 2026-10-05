@@ -9,6 +9,7 @@ import { StudentStreakModule } from './attempts/streak.module';
 import { AdminSuspiciousModule } from './attempts/suspicious.module';
 import { AppModule } from './app.module';
 import { AuthModule } from './auth/auth.module';
+import { AdminAuthModule, StudentAuthModule, TeacherAuthModule } from './auth/role-auth.module';
 import { ClassesModule } from './classes/classes.module';
 import { StudentClassesModule } from './classes/student-classes.module';
 import { StudentContentModule, TeacherContentModule } from './content/content.module';
@@ -24,9 +25,9 @@ import { StudentProfileModule } from './users/student-profile.module';
 export function audienceModules(): Record<'student' | 'teacher' | 'admin', Array<Type<unknown>>> {
   const shared = [AppModule, AuthModule, ProfileModule];
   return {
-    student: [...shared, StudentProfileModule, StudentClassesModule, StudentContentModule, StudentAdventureModule, StudentAssignmentsModule, AttemptsModule,
+    student: [...shared, StudentAuthModule, StudentProfileModule, StudentClassesModule, StudentContentModule, StudentAdventureModule, StudentAssignmentsModule, AttemptsModule,
       StudentFeedbackModule, StudentStreakModule, StudentLeaderboardsModule],
-    teacher: [...shared, ClassesModule, TeacherContentModule, TeacherAssignmentsModule, TeacherFeedbackModule, TeacherReportsModule],
-    admin: [...shared, AdminUsersModule, AdminContentModule, AdminFeedbackModule, AdminSuspiciousModule, AdminOverviewModule],
+    teacher: [...shared, TeacherAuthModule, ClassesModule, TeacherContentModule, TeacherAssignmentsModule, TeacherFeedbackModule, TeacherReportsModule],
+    admin: [...shared, AdminAuthModule, AdminUsersModule, AdminContentModule, AdminFeedbackModule, AdminSuspiciousModule, AdminOverviewModule],
   };
 }

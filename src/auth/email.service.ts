@@ -4,7 +4,7 @@ import { positiveSetting } from './auth.config';
 
 @Injectable()
 export class EmailService {
-  async sendCode(email: string, code: string, lifetimeSeconds: number): Promise<void> {
+  async sendCode(email: string, code: string, lifetimeSeconds: number, purpose: 'sign-in' | 'password-reset' = 'sign-in'): Promise<void> {
     const host = process.env.SMTP_HOST;
     const from = process.env.SMTP_FROM;
     if (!host || !from) throw new ServiceUnavailableException('Email delivery is not configured');
@@ -26,8 +26,9 @@ export class EmailService {
     });
     try {
       const info = await transport.sendMail({
-        from, to: email, subject: 'Hodhod sign-in code',
-        text: 'Your Hodhod sign-in code is: ' + code + '\nExpires in ' + Math.ceil(lifetimeSeconds / 60) + ' minutes. Do not share this code.',
+        from, to: email, subject: purpose === 'sign-in' ? 'Hodhod sign-in code' : 'Hodhod password reset code',
+        text: 'Your Hodhod ' + (purpose === 'sign-in' ? 'sign-in' : 'password reset') + ' code is: ' + code +
+          '\nExpires in ' + Math.ceil(lifetimeSeconds / 60) + ' minutes. Do not share this code.',
       });
       if (info.rejected.length || !info.accepted.length) throw new Error('Recipient not accepted');
     } catch {

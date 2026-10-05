@@ -26,6 +26,17 @@ export class ProfileDto {
   createdAt!: Date;
 }
 
+export class MeDto extends ProfileDto {
+  @ApiProperty({ example: false, description: 'Whether a password is set; choose password/set or password/change accordingly' })
+  hasPassword!: boolean;
+}
+
+/** The password hash never leaves the database; only whether one exists. */
+export async function hasPassword(runner: { query: (sql: string, params: unknown[]) => Promise<unknown> }, userId: string) {
+  const rows = await runner.query('SELECT password_hash IS NOT NULL AS has_password FROM users WHERE id=$1', [userId]) as Array<{ has_password: boolean }>;
+  return rows[0]?.has_password === true;
+}
+
 export function profileOf(user: User): ProfileDto {
   const { id, email, role, displayName, avatarId, timezone, createdAt } = user;
   return { id, email, role, displayName, avatarId, timezone, createdAt };

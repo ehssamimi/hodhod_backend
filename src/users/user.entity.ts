@@ -25,4 +25,7 @@ export class User {
 
   @Column({ name: 'auth_version', type: 'integer', default: 0 })
   authVersion!: number;
+
+  @Column({ name: 'password_hash', type: 'varchar', length: 255, nullable: true, select: false, insert: false, update: false })
+  passwordHash!: string | null;
 }

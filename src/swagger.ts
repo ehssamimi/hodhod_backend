@@ -42,7 +42,7 @@ export function setupSwagger(
   for (const audience of ['student', 'teacher', 'admin'] as const) {
     const config = new DocumentBuilder()
       .setTitle(`Hodhod ${audience} API`)
-      .setDescription('Implemented endpoints only. Email sign-in and revocable Bearer sessions.')
+      .setDescription('Implemented endpoints only. Email-code or password sign-in and revocable Bearer sessions.')
       .setVersion('0.1.0')
       .addBearerAuth()
       .build();

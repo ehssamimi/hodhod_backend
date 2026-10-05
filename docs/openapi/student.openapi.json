@@ -189,6 +189,279 @@
         ]
       }
     },
+    "/student/auth/request-code": {
+      "post": {
+        "operationId": "StudentAuthController_requestCode",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestCodeResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or unexpected fields"
+          },
+          "429": {
+            "description": "Email or IP authentication limit exceeded"
+          },
+          "503": {
+            "description": "SMTP unavailable or unconfigured"
+          }
+        },
+        "summary": "Request a student email sign-in code",
+        "tags": [
+          "Student / Authentication"
+        ]
+      }
+    },
+    "/student/auth/verify-code": {
+      "post": {
+        "operationId": "StudentAuthController_verifyCode",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyCodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyCodeResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or unexpected fields"
+          },
+          "401": {
+            "description": "Invalid, expired or consumed code, or wrong account role"
+          },
+          "429": {
+            "description": "Email or IP authentication limit exceeded"
+          }
+        },
+        "summary": "Sign in or register a student with an email code",
+        "tags": [
+          "Student / Authentication"
+        ]
+      }
+    },
+    "/student/auth/login/password": {
+      "post": {
+        "operationId": "StudentAuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordLoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyCodeResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or unexpected fields"
+          },
+          "401": {
+            "description": "Invalid email, password or account role"
+          },
+          "429": {
+            "description": "Email or IP authentication limit exceeded"
+          }
+        },
+        "summary": "Sign in a student with email and password",
+        "tags": [
+          "Student / Authentication"
+        ]
+      }
+    },
+    "/student/auth/password/set": {
+      "post": {
+        "operationId": "StudentAuthController_set",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Password set; all sessions revoked"
+          },
+          "400": {
+            "description": "Invalid password or unexpected fields"
+          },
+          "401": {
+            "description": "Missing, expired or revoked access token"
+          },
+          "409": {
+            "description": "Password is already set"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Set the first password after verified email sign-in",
+        "tags": [
+          "Student / Authentication"
+        ]
+      }
+    },
+    "/student/auth/password/change": {
+      "post": {
+        "operationId": "StudentAuthController_change",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Password changed; all sessions revoked"
+          },
+          "400": {
+            "description": "Invalid password or unexpected fields"
+          },
+          "401": {
+            "description": "Missing/revoked session or incorrect current password"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change the current student password",
+        "tags": [
+          "Student / Authentication"
+        ]
+      }
+    },
+    "/student/auth/password/reset/request-code": {
+      "post": {
+        "operationId": "StudentAuthController_requestReset",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestCodeResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or unexpected fields"
+          },
+          "429": {
+            "description": "Email or IP authentication limit exceeded"
+          },
+          "503": {
+            "description": "SMTP unavailable or unconfigured"
+          }
+        },
+        "summary": "Request a student password-reset code",
+        "tags": [
+          "Student / Authentication"
+        ]
+      }
+    },
+    "/student/auth/password/reset/confirm": {
+      "post": {
+        "operationId": "StudentAuthController_reset",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Password reset; all sessions revoked"
+          },
+          "400": {
+            "description": "Invalid input or unexpected fields"
+          },
+          "401": {
+            "description": "Invalid, expired or consumed code, or wrong account role"
+          },
+          "429": {
+            "description": "Email or IP authentication limit exceeded"
+          }
+        },
+        "summary": "Reset a student password with an email code",
+        "tags": [
+          "Student / Authentication"
+        ]
+      }
+    },
     "/me": {
       "get": {
         "operationId": "ProfileController_getProfile",
@@ -199,7 +472,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProfileDto"
+                  "$ref": "#/components/schemas/MeDto"
                 }
               }
             }
@@ -213,7 +486,7 @@
             "bearer": []
           }
         ],
-        "summary": "Get your account: role, display name, avatar and timezone",
+        "summary": "Get your account: role, display name, avatar, timezone and password status",
         "tags": [
           "Shared / Profile"
         ]
@@ -237,7 +510,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProfileDto"
+                  "$ref": "#/components/schemas/MeDto"
                 }
               }
             }
@@ -993,7 +1266,7 @@
   },
   "info": {
     "title": "Hodhod student API",
-    "description": "Implemented endpoints only. Email sign-in and revocable Bearer sessions.",
+    "description": "Implemented endpoints only. Email-code or password sign-in and revocable Bearer sessions.",
     "version": "0.1.0",
     "contact": {}
   },
@@ -1025,7 +1298,7 @@
         "properties": {
           "message": {
             "type": "string",
-            "example": "If delivery succeeds, a sign-in code will arrive shortly"
+            "example": "If the account is eligible, a verification code will arrive shortly"
           }
         },
         "required": [
@@ -1117,7 +1390,86 @@
           "isNewUser"
         ]
       },
-      "ProfileDto": {
+      "PasswordLoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "student@example.com"
+          },
+          "password": {
+            "type": "string",
+            "example": "correct horse battery staple",
+            "minLength": 8,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "SetPasswordDto": {
+        "type": "object",
+        "properties": {
+          "newPassword": {
+            "type": "string",
+            "example": "correct horse battery staple",
+            "minLength": 8,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "newPassword"
+        ]
+      },
+      "ChangePasswordDto": {
+        "type": "object",
+        "properties": {
+          "newPassword": {
+            "type": "string",
+            "example": "correct horse battery staple",
+            "minLength": 8,
+            "maxLength": 128
+          },
+          "currentPassword": {
+            "type": "string",
+            "example": "previous correct horse battery staple",
+            "minLength": 8,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "newPassword",
+          "currentPassword"
+        ]
+      },
+      "ResetPasswordDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "student@example.com"
+          },
+          "code": {
+            "type": "string",
+            "example": "083719",
+            "description": "Six-digit emailed code; 11111 only in explicitly enabled development mode"
+          },
+          "newPassword": {
+            "type": "string",
+            "example": "new correct horse battery staple",
+            "minLength": 8,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "email",
+          "code",
+          "newPassword"
+        ]
+      },
+      "MeDto": {
         "type": "object",
         "properties": {
           "id": {
@@ -1151,6 +1503,11 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "hasPassword": {
+            "type": "boolean",
+            "example": false,
+            "description": "Whether a password is set; choose password/set or password/change accordingly"
           }
         },
         "required": [
@@ -1160,7 +1517,8 @@
           "displayName",
           "avatarId",
           "timezone",
-          "createdAt"
+          "createdAt",
+          "hasPassword"
         ]
       },
       "ProfileSettingsDto": {

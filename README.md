@@ -16,9 +16,17 @@ NestJS API with PostgreSQL. The teacher panel and student app are separate proje
 
 In development, Swagger UI is available separately at `/docs/student`, `/docs/teacher`, and `/docs/admin`; their OpenAPI JSON files are at `/docs/<audience>/openapi.json`. All three contain shared health, email authentication, logout and GET /me. Only the admin specification includes GET /admin/users and PATCH /admin/users/{id}/role; only the student specification includes PATCH /me. Swagger is not exposed when `NODE_ENV=production`. When adding an API, include its module in the relevant audience specification and document its request, response, authentication, and errors in the same change.
 
-## Email sign-in (BE-03)
+## Email and password sign-in (BE-03)
 
 POST /auth/request-code with an email, then POST /auth/verify-code with that email and the six-digit code received through SMTP. Successful verification creates a revocable session. Codes expire, allow a limited number of guesses and cannot be reused. POST /auth/logout revokes the current session; POST /auth/logout-all revokes all account sessions.
+
+Student, teacher and admin clients also have separate `/student/auth/*`,
+`/teacher/auth/*` and `/admin/auth/*` APIs for OTP sign-in, password sign-in, first
+password setup after verified OTP sign-in, password change, and the request/confirm
+password-reset flow. Password hashes use salted scrypt; sign-in and reset codes have
+separate purposes; every password replacement revokes all sessions. Teacher/admin
+routes never create an account or change its role. See
+[docs/EMAIL_AUTH.md](docs/EMAIL_AUTH.md) for the endpoint table and security details.
 
 The local SMTP setup, production settings, request limits and test instructions are in [the email authentication runbook](docs/EMAIL_AUTH.md). The fixed 11111 shortcut only works with NODE_ENV=development and AUTH_DEV_OTP_ENABLED=true. The example configuration uses real local SMTP instead.
 

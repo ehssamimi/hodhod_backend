@@ -189,6 +189,285 @@
         ]
       }
     },
+    "/teacher/auth/request-code": {
+      "post": {
+        "operationId": "TeacherAuthController_requestCode",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestCodeResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or unexpected fields"
+          },
+          "429": {
+            "description": "Email or IP authentication limit exceeded"
+          },
+          "503": {
+            "description": "SMTP unavailable or unconfigured"
+          }
+        },
+        "summary": "Request a teacher email sign-in code",
+        "tags": [
+          "Teacher / Authentication"
+        ]
+      }
+    },
+    "/teacher/auth/verify-code": {
+      "post": {
+        "operationId": "TeacherAuthController_verifyCode",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyCodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyCodeResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or unexpected fields"
+          },
+          "401": {
+            "description": "Invalid, expired or consumed code, or wrong account role"
+          },
+          "429": {
+            "description": "Email or IP authentication limit exceeded"
+          }
+        },
+        "summary": "Sign in a teacher with an email code",
+        "tags": [
+          "Teacher / Authentication"
+        ]
+      }
+    },
+    "/teacher/auth/login/password": {
+      "post": {
+        "operationId": "TeacherAuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordLoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyCodeResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or unexpected fields"
+          },
+          "401": {
+            "description": "Invalid email, password or account role"
+          },
+          "429": {
+            "description": "Email or IP authentication limit exceeded"
+          }
+        },
+        "summary": "Sign in a teacher with email and password",
+        "tags": [
+          "Teacher / Authentication"
+        ]
+      }
+    },
+    "/teacher/auth/password/set": {
+      "post": {
+        "operationId": "TeacherAuthController_set",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Password set; all sessions revoked"
+          },
+          "400": {
+            "description": "Invalid password or unexpected fields"
+          },
+          "401": {
+            "description": "Missing, expired or revoked access token"
+          },
+          "403": {
+            "description": "Teacher role required"
+          },
+          "409": {
+            "description": "Password is already set"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Set the first password after verified teacher email sign-in",
+        "tags": [
+          "Teacher / Authentication"
+        ]
+      }
+    },
+    "/teacher/auth/password/change": {
+      "post": {
+        "operationId": "TeacherAuthController_change",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Password changed; all sessions revoked"
+          },
+          "400": {
+            "description": "Invalid password or unexpected fields"
+          },
+          "401": {
+            "description": "Missing/revoked session or incorrect current password"
+          },
+          "403": {
+            "description": "Teacher role required"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change the current teacher password",
+        "tags": [
+          "Teacher / Authentication"
+        ]
+      }
+    },
+    "/teacher/auth/password/reset/request-code": {
+      "post": {
+        "operationId": "TeacherAuthController_requestReset",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestCodeResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or unexpected fields"
+          },
+          "429": {
+            "description": "Email or IP authentication limit exceeded"
+          },
+          "503": {
+            "description": "SMTP unavailable or unconfigured"
+          }
+        },
+        "summary": "Request a teacher password-reset code",
+        "tags": [
+          "Teacher / Authentication"
+        ]
+      }
+    },
+    "/teacher/auth/password/reset/confirm": {
+      "post": {
+        "operationId": "TeacherAuthController_reset",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Password reset; all sessions revoked"
+          },
+          "400": {
+            "description": "Invalid input or unexpected fields"
+          },
+          "401": {
+            "description": "Invalid, expired or consumed code, or wrong account role"
+          },
+          "429": {
+            "description": "Email or IP authentication limit exceeded"
+          }
+        },
+        "summary": "Reset a teacher password with an email code",
+        "tags": [
+          "Teacher / Authentication"
+        ]
+      }
+    },
     "/me": {
       "get": {
         "operationId": "ProfileController_getProfile",
@@ -199,7 +478,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProfileDto"
+                  "$ref": "#/components/schemas/MeDto"
                 }
               }
             }
@@ -213,7 +492,7 @@
             "bearer": []
           }
         ],
-        "summary": "Get your account: role, display name, avatar and timezone",
+        "summary": "Get your account: role, display name, avatar, timezone and password status",
         "tags": [
           "Shared / Profile"
         ]
@@ -1285,7 +1564,7 @@
   },
   "info": {
     "title": "Hodhod teacher API",
-    "description": "Implemented endpoints only. Email sign-in and revocable Bearer sessions.",
+    "description": "Implemented endpoints only. Email-code or password sign-in and revocable Bearer sessions.",
     "version": "0.1.0",
     "contact": {}
   },
@@ -1317,7 +1596,7 @@
         "properties": {
           "message": {
             "type": "string",
-            "example": "If delivery succeeds, a sign-in code will arrive shortly"
+            "example": "If the account is eligible, a verification code will arrive shortly"
           }
         },
         "required": [
@@ -1409,7 +1688,86 @@
           "isNewUser"
         ]
       },
-      "ProfileDto": {
+      "PasswordLoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "student@example.com"
+          },
+          "password": {
+            "type": "string",
+            "example": "correct horse battery staple",
+            "minLength": 8,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "SetPasswordDto": {
+        "type": "object",
+        "properties": {
+          "newPassword": {
+            "type": "string",
+            "example": "correct horse battery staple",
+            "minLength": 8,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "newPassword"
+        ]
+      },
+      "ChangePasswordDto": {
+        "type": "object",
+        "properties": {
+          "newPassword": {
+            "type": "string",
+            "example": "correct horse battery staple",
+            "minLength": 8,
+            "maxLength": 128
+          },
+          "currentPassword": {
+            "type": "string",
+            "example": "previous correct horse battery staple",
+            "minLength": 8,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "newPassword",
+          "currentPassword"
+        ]
+      },
+      "ResetPasswordDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "student@example.com"
+          },
+          "code": {
+            "type": "string",
+            "example": "083719",
+            "description": "Six-digit emailed code; 11111 only in explicitly enabled development mode"
+          },
+          "newPassword": {
+            "type": "string",
+            "example": "new correct horse battery staple",
+            "minLength": 8,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "email",
+          "code",
+          "newPassword"
+        ]
+      },
+      "MeDto": {
         "type": "object",
         "properties": {
           "id": {
@@ -1443,6 +1801,11 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "hasPassword": {
+            "type": "boolean",
+            "example": false,
+            "description": "Whether a password is set; choose password/set or password/change accordingly"
           }
         },
         "required": [
@@ -1452,7 +1815,8 @@
           "displayName",
           "avatarId",
           "timezone",
-          "createdAt"
+          "createdAt",
+          "hasPassword"
         ]
       },
       "ClassMemberDto": {

@@ -11,6 +11,7 @@ const { User } = require('../src/users/user.entity');
 const { EmailAuthentication1790640000000 } = require('../src/database/migrations/1790640000000-EmailAuthentication');
 const { CloseArchivedMemberships1790726400000 } = require('../src/database/migrations/1790726400000-CloseArchivedMemberships');
 const { AdminAudit1791072000000 } = require('../src/database/migrations/1791072000000-AdminAudit');
+const { PasswordAuthentication1791158400000 } = require('../src/database/migrations/1791158400000-PasswordAuthentication');
 const { backup } = require('./db-backup.cjs');
 const { restore } = require('./db-restore.cjs');
 const os = require('node:os');
@@ -238,6 +239,11 @@ async function main() {
   await fresh.undoLastMigration();
   assert.equal((await fresh.runMigrations()).length,1);
   console.log('PASS BE-21 admin audit table applies, reverts and reapplies');
+  fresh.migrations.push(new PasswordAuthentication1791158400000());
+  assert.equal((await fresh.runMigrations()).length,1);
+  await fresh.undoLastMigration();
+  assert.equal((await fresh.runMigrations()).length,1);
+  console.log('PASS password authentication columns and purpose-separated codes apply, revert and reapply');
   console.log('PASS BE-06 historical archive repair, active membership retention and non-reopening rollback');
   await require('./identity-checks.cjs')(fresh);
   console.log('All BE-02 identity integration checks passed.');
@@ -269,7 +275,7 @@ async function main() {
   } finally { fs.rmSync(file, { force: true }); }
 
   const emailSource = await source('be03_full', false, true);
-  assert.equal((await emailSource.runMigrations()).length, 8);
+  assert.equal((await emailSource.runMigrations()).length, 9);
   await require('./email-auth-checks.cjs')(emailSource);
   console.log('All BE-03 email authentication checks passed.');
 }

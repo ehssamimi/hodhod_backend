@@ -2,13 +2,13 @@ import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/c
 import { DataSource } from 'typeorm';
 import { User } from './user.entity';
 import { ProfileSettingsDto } from './profile-settings.dto';
-import { profileOf } from './user.dto';
+import { hasPassword, MeDto, profileOf } from './user.dto';
 
 @Injectable()
 export class ProfileSettingsService {
   constructor(private readonly source: DataSource) {}
 
-  async update(actor: User, input: ProfileSettingsDto) {
+  async update(actor: User, input: ProfileSettingsDto): Promise<MeDto> {
     return this.source.transaction(async manager => {
       const users = manager.getRepository(User);
       const user = await users.findOne({ where: { id: actor.id }, lock: { mode: 'pessimistic_write' } });
@@ -21,7 +21,7 @@ export class ProfileSettingsService {
       }
       await users.save(user);
       // Historical daily_activity timezone snapshots, attempts and scores are unchanged.
-      return profileOf(user);
+      return { ...profileOf(user), hasPassword: await hasPassword(manager, user.id) };
     });
   }
 }

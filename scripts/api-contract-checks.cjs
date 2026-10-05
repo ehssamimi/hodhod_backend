@@ -31,9 +31,9 @@ module.exports = async ({ request }) => {
   }
   // Every endpoint of each family is documented on the page of its audience.
   const expected = {
-    student: ['/classes/mine', '/classes/join', '/content', '/adventure/map', '/assignments/mine', '/attempts', '/feedback', '/streak', '/leaderboards/global', '/leaderboards/class'],
-    teacher: ['/teacher/classes', '/teacher/content', '/teacher/assignments', '/teacher/feedback', '/teacher/reports/students/{studentId}'],
-    admin: ['/admin/content', '/admin/adventure/path', '/admin/rules', '/admin/users', '/admin/users/{id}', '/admin/users/{id}/role', '/admin/feedback', '/admin/suspicious-events', '/admin/overview', '/admin/audit'],
+    student: ['/student/auth/request-code', '/student/auth/verify-code', '/student/auth/login/password', '/student/auth/password/set', '/student/auth/password/change', '/student/auth/password/reset/request-code', '/student/auth/password/reset/confirm', '/classes/mine', '/classes/join', '/content', '/adventure/map', '/assignments/mine', '/attempts', '/feedback', '/streak', '/leaderboards/global', '/leaderboards/class'],
+    teacher: ['/teacher/auth/request-code', '/teacher/auth/verify-code', '/teacher/auth/login/password', '/teacher/auth/password/set', '/teacher/auth/password/change', '/teacher/auth/password/reset/request-code', '/teacher/auth/password/reset/confirm', '/teacher/classes', '/teacher/content', '/teacher/assignments', '/teacher/feedback', '/teacher/reports/students/{studentId}'],
+    admin: ['/admin/auth/request-code', '/admin/auth/verify-code', '/admin/auth/login/password', '/admin/auth/password/set', '/admin/auth/password/change', '/admin/auth/password/reset/request-code', '/admin/auth/password/reset/confirm', '/admin/content', '/admin/adventure/path', '/admin/rules', '/admin/users', '/admin/users/{id}', '/admin/users/{id}/role', '/admin/feedback', '/admin/suspicious-events', '/admin/overview', '/admin/audit'],
   };
   for (const [audience, paths] of Object.entries(expected)) for (const p of paths) assert.ok(docs[audience].paths[p], `${p} missing on ${audience}`);
   assert.equal(Object.keys(docs.student.paths).some(p => p.startsWith('/teacher/') || p.startsWith('/admin/')), false);
@@ -44,7 +44,8 @@ module.exports = async ({ request }) => {
   const problems = [];
   for (const { audience, p, method, op, doc } of ops) {
     const id = `${audience} ${method} ${p}`;
-    const publicRoute = p.startsWith('/health') || ['/auth/request-code', '/auth/verify-code'].includes(p);
+    const publicRoleAuth = /^\/(student|teacher|admin)\/auth\/(request-code|verify-code|login\/password|password\/reset\/(request-code|confirm))$/.test(p);
+    const publicRoute = p.startsWith('/health') || ['/auth/request-code', '/auth/verify-code'].includes(p) || publicRoleAuth;
     if (!op.summary) problems.push(id + ': no summary');
     if (!op.tags?.length) problems.push(id + ': no tag');
     const codes = Object.keys(op.responses);
@@ -53,8 +54,8 @@ module.exports = async ({ request }) => {
       if (!op.security?.some(s => s.bearer)) problems.push(id + ': not marked as Bearer-secured');
       if (!codes.includes('401')) problems.push(id + ': no 401 response');
     }
-    if (p.startsWith('/teacher/') && !codes.includes('403')) problems.push(id + ': no 403 response');
-    if (p.startsWith('/admin/') && !codes.includes('403')) problems.push(id + ': no 403 response');
+    if (!publicRoute && p.startsWith('/teacher/') && !codes.includes('403')) problems.push(id + ': no 403 response');
+    if (!publicRoute && p.startsWith('/admin/') && !codes.includes('403')) problems.push(id + ': no 403 response');
     // Endpoints that read an id or filter document the 400 they can return.
     if ((op.parameters ?? []).length && !codes.includes('400')) problems.push(id + ': parameters but no 400 response');
     for (const param of (p.match(/\{(\w+)\}/g) ?? [])) {

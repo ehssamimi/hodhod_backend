@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, Matches } from 'class-validator';
+import { IsEmail, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 import { ProfileDto } from '../users/user.dto';
 
 export class EmailDto {
@@ -14,8 +14,40 @@ export class VerifyCodeDto extends EmailDto {
   code!: string;
 }
 
+export class PasswordLoginDto extends EmailDto {
+  @ApiProperty({ example: 'correct horse battery staple', minLength: 8, maxLength: 128 })
+  @IsString()
+  @MinLength(8)
+  @MaxLength(128)
+  password!: string;
+}
+
+export class SetPasswordDto {
+  @ApiProperty({ example: 'correct horse battery staple', minLength: 8, maxLength: 128 })
+  @IsString()
+  @MinLength(8)
+  @MaxLength(128)
+  newPassword!: string;
+}
+
+export class ChangePasswordDto extends SetPasswordDto {
+  @ApiProperty({ example: 'previous correct horse battery staple', minLength: 8, maxLength: 128 })
+  @IsString()
+  @MinLength(8)
+  @MaxLength(128)
+  currentPassword!: string;
+}
+
+export class ResetPasswordDto extends VerifyCodeDto {
+  @ApiProperty({ example: 'new correct horse battery staple', minLength: 8, maxLength: 128 })
+  @IsString()
+  @MinLength(8)
+  @MaxLength(128)
+  newPassword!: string;
+}
+
 export class RequestCodeResponseDto {
-  @ApiProperty({ example: 'If delivery succeeds, a sign-in code will arrive shortly' })
+  @ApiProperty({ example: 'If the account is eligible, a verification code will arrive shortly' })
   message!: string;
 }
 

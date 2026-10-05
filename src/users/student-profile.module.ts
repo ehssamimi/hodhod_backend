@@ -4,7 +4,7 @@ import { ApiBadRequestResponse, ApiBearerAuth, ApiForbiddenResponse, ApiOkRespon
 import { CurrentUser, Roles } from '../auth/security';
 import { ProfileSettingsDto } from './profile-settings.dto';
 import { ProfileSettingsService } from './profile-settings.service';
-import { ProfileDto } from './user.dto';
+import { MeDto } from './user.dto';
 import { User } from './user.entity';
 
 @ApiTags('Student / Account settings')
@@ -16,7 +16,7 @@ export class StudentProfileController {
 
   @Patch()
   @ApiOperation({ summary: 'Update your display name, avatar identifier and timezone' })
-  @ApiOkResponse({ type: ProfileDto })
+  @ApiOkResponse({ type: MeDto })
   @ApiBadRequestResponse({ description: 'Invalid field, timezone, or unexpected property' })
   @ApiUnauthorizedResponse({ description: 'Missing, expired or revoked access token' })
   @ApiForbiddenResponse({ description: 'Student role required' })

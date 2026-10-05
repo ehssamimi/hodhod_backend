@@ -44,9 +44,9 @@ module.exports = async function emailAuthChecks(source) {
     }
     const resetLimits=()=>source.query('TRUNCATE auth_rate_limits');
     const verify=(email,code)=>request('/auth/verify-code',{email,code});
-    async function issue(email) {
+    async function issueAt(path,email) {
       const before=messages.length;
-      const response=await request('/auth/request-code',{email});
+      const response=await request(path,{email});
       assert.equal(response.status,201,JSON.stringify(response.data));
       assert.equal(messages.length,before+1);
       const message=messages.at(-1);
@@ -56,6 +56,7 @@ module.exports = async function emailAuthChecks(source) {
       assert.equal(JSON.stringify(response.data).includes(code),false);
       return code;
     }
+    const issue=email=>issueAt('/auth/request-code',email);
     const email='email-student@example.com';
     const code=await issue(email);
     const saved=(await source.query('SELECT * FROM auth_email_codes WHERE email=$1',[email]))[0];
@@ -134,6 +135,59 @@ module.exports = async function emailAuthChecks(source) {
     await source.query("UPDATE auth_sessions SET created_at=now()-interval '2 days',expires_at=now()-interval '1 day' WHERE user_id=$1",[expiring.data.user.id]);
     assert.equal((await request('/me',undefined,expiring.data.accessToken,'GET')).status,401);
     console.log('PASS logout, logout-all, fresh sign-in and database session expiry');
+
+    const credentials = {
+      student: { email:'password-student@example.com', password:'student password one', next:'student password two' },
+      teacher: { email:'password-teacher@example.com', password:'teacher password one', next:'teacher password two' },
+      admin: { email:'password-admin@example.com', password:'admin password one', next:'admin password two' },
+    };
+    await source.query("INSERT INTO users(email,role) VALUES ($1,'teacher'),($2,'admin')", [credentials.teacher.email,credentials.admin.email]);
+    for (const [role, account] of Object.entries(credentials)) {
+      await resetLimits();
+      const code=await issueAt(`/${role}/auth/request-code`,account.email);
+      const otpLogin=await request(`/${role}/auth/verify-code`,{email:account.email,code});
+      assert.equal(otpLogin.status,201,`${role} OTP login: ${JSON.stringify(otpLogin.data)}`);
+      assert.equal(otpLogin.data.user.role,role);
+      assert.equal((await request('/me',undefined,otpLogin.data.accessToken,'GET')).data.hasPassword,false);
+      assert.equal((await request(`/${role}/auth/password/set`,{newPassword:account.password},otpLogin.data.accessToken)).status,204);
+      assert.equal((await request('/me',undefined,otpLogin.data.accessToken,'GET')).status,401,'set revokes the verified session');
+      const stored=(await source.query('SELECT password_hash FROM users WHERE email=$1',[account.email]))[0].password_hash;
+      assert.match(stored,/^scrypt\$16384\$8\$1\$/);assert.equal(stored.includes(account.password),false);
+      await resetLimits();
+      assert.equal((await request(`/${role}/auth/login/password`,{email:account.email,password:'wrong password'})).status,401);
+      const passwordLogin=await request(`/${role}/auth/login/password`,{email:account.email,password:account.password});
+      assert.equal(passwordLogin.status,201,`${role} password login: ${JSON.stringify(passwordLogin.data)}`);
+      assert.equal(passwordLogin.data.user.role,role);
+      assert.equal((await request('/me',undefined,passwordLogin.data.accessToken,'GET')).data.hasPassword,true);
+      assert.equal((await request(`/${role}/auth/password/set`,{newPassword:account.next},passwordLogin.data.accessToken)).status,409);
+      assert.equal((await request(`/${role}/auth/password/change`,{currentPassword:'wrong password',newPassword:account.next},passwordLogin.data.accessToken)).status,401);
+      assert.equal((await request('/me',undefined,passwordLogin.data.accessToken,'GET')).status,200,'failed change preserves session');
+      assert.equal((await request(`/${role}/auth/password/change`,{currentPassword:account.password,newPassword:account.next},passwordLogin.data.accessToken)).status,204);
+      assert.equal((await request('/me',undefined,passwordLogin.data.accessToken,'GET')).status,401,'change revokes all sessions');
+      await resetLimits();
+      assert.equal((await request(`/${role}/auth/login/password`,{email:account.email,password:account.password})).status,401);
+      assert.equal((await request(`/${role}/auth/login/password`,{email:account.email,password:account.next})).status,201);
+    }
+    console.log('PASS role-specific student, teacher and admin OTP login, password set/login/change, hashes and session revocation');
+
+    const resetAccount=credentials.student;
+    await resetLimits();
+    const signInCode=await issueAt('/student/auth/request-code',resetAccount.email);
+    const resetCode=await issueAt('/student/auth/password/reset/request-code',resetAccount.email);
+    const purposes=await source.query('SELECT purpose FROM auth_email_codes WHERE email=$1 ORDER BY purpose',[resetAccount.email]);
+    assert.deepEqual(purposes.map(row=>row.purpose),['password-reset','sign-in']);
+    assert.equal((await request('/student/auth/password/reset/confirm',{
+      email:resetAccount.email,code:signInCode,newPassword:'student password three'})).status,401);
+    assert.equal((await request('/student/auth/password/reset/confirm',{
+      email:resetAccount.email,code:resetCode,newPassword:'student password three'})).status,204);
+    await resetLimits();
+    assert.equal((await request('/student/auth/login/password',{email:resetAccount.email,password:resetAccount.next})).status,401);
+    assert.equal((await request('/student/auth/login/password',{email:resetAccount.email,password:'student password three'})).status,201);
+    const beforeUnknown=messages.length;
+    assert.equal((await request('/teacher/auth/password/reset/request-code',{email:'unknown-teacher@example.com'})).status,201);
+    assert.equal((await request('/teacher/auth/request-code',{email:'unknown-teacher@example.com'})).status,201);
+    assert.equal(messages.length,beforeUnknown,'unknown privileged accounts do not receive codes');
+    console.log('PASS purpose-separated reset code, password reset and non-disclosing privileged-account requests');
   } finally {
     await app.close();await new Promise(resolve=>smtp.close(resolve));process.env=previous;
   }

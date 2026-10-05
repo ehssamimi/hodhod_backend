@@ -20,9 +20,10 @@ import { StudentProfileModule } from './users/student-profile.module';
 import { ProfileModule } from './users/profile.module';
 import { AdminUsersModule } from './users/admin-users.module';
 import { databaseOptions } from './database/data-source';
+import { AdminAuthModule, StudentAuthModule, TeacherAuthModule } from './auth/role-auth.module';
 
 @Module({
-  imports: [TypeOrmModule.forRoot(databaseOptions()), AuthModule, ProfileModule, AdminUsersModule, StudentProfileModule, ClassesModule, StudentClassesModule, StudentContentModule, TeacherContentModule, StudentAdventureModule, AdminContentModule, TeacherAssignmentsModule, StudentAssignmentsModule, AttemptsModule, StudentFeedbackModule, TeacherFeedbackModule, AdminFeedbackModule, TeacherReportsModule, AdminSuspiciousModule, StudentStreakModule, StudentLeaderboardsModule, AdminOverviewModule],
+  imports: [TypeOrmModule.forRoot(databaseOptions()), AuthModule, StudentAuthModule, TeacherAuthModule, AdminAuthModule, ProfileModule, AdminUsersModule, StudentProfileModule, ClassesModule, StudentClassesModule, StudentContentModule, TeacherContentModule, StudentAdventureModule, AdminContentModule, TeacherAssignmentsModule, StudentAssignmentsModule, AttemptsModule, StudentFeedbackModule, TeacherFeedbackModule, AdminFeedbackModule, TeacherReportsModule, AdminSuspiciousModule, StudentStreakModule, StudentLeaderboardsModule, AdminOverviewModule],
   controllers: [HealthController],
 })
 export class AppModule {}
