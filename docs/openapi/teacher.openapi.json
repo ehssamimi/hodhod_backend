@@ -240,7 +240,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/MembershipDto"
+                    "$ref": "#/components/schemas/ClassMemberDto"
                   }
                 }
               }
@@ -1455,7 +1455,7 @@
           "createdAt"
         ]
       },
-      "MembershipDto": {
+      "ClassMemberDto": {
         "type": "object",
         "properties": {
           "id": {
@@ -1487,6 +1487,12 @@
             "format": "date-time",
             "nullable": true,
             "example": null
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Sara",
+            "description": "Student display name; null when the student has not set one. Never includes email."
           }
         },
         "required": [
@@ -1495,7 +1501,8 @@
           "className",
           "studentId",
           "joinedAt",
-          "endedAt"
+          "endedAt",
+          "displayName"
         ]
       },
       "CreateClassDto": {
@@ -1534,7 +1541,7 @@
             ]
           },
           "joinCode": {
-            "type": "object",
+            "type": "string",
             "nullable": true,
             "description": "Active join code; null for archived classes"
           },
@@ -1543,7 +1550,7 @@
             "type": "string"
           },
           "archivedAt": {
-            "type": "object",
+            "type": "string",
             "format": "date-time",
             "nullable": true
           }
@@ -1599,6 +1606,16 @@
           "publishedAt": {
             "format": "date-time",
             "type": "string"
+          },
+          "maxStars": {
+            "type": "number",
+            "example": 5,
+            "description": "Stars available under the effective scoring rule (content rule, else global, else default)"
+          },
+          "passStars": {
+            "type": "number",
+            "example": 3,
+            "description": "Best stars needed to pass under the effective scoring rule"
           }
         },
         "required": [
@@ -1609,7 +1626,9 @@
           "kind",
           "unityId",
           "version",
-          "publishedAt"
+          "publishedAt",
+          "maxStars",
+          "passStars"
         ]
       },
       "CreateAssignmentDto": {

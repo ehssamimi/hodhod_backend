@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { starLimitsFor } from '../scoring/scoring';
 import { ContentDto, ListContentDto } from './content.dto';
 
 type Kind = 'adventure' | 'practice';
@@ -33,7 +34,12 @@ export class ContentService {
     }
     params.push(query.limit ?? 50, query.offset ?? 0);
     sql += ` ORDER BY c.title, c.id LIMIT $${params.length - 1} OFFSET $${params.length}`;
-    return this.source.query(sql, params);
+    return this.withStarLimits(await this.source.query(sql, params));
+  }
+
+  private async withStarLimits(rows: Array<Omit<ContentDto, 'maxStars' | 'passStars'>>): Promise<ContentDto[]> {
+    const limits = await starLimitsFor(this.source, rows.map(row => row.id));
+    return rows.map(row => ({ ...row, ...limits.get(row.id)! }));
   }
 
   async get(id: string, fixed?: Kind): Promise<ContentDto> {
@@ -42,6 +48,6 @@ export class ContentService {
     if (fixed) { params.push(this.kinds(fixed)); sql += ' AND c.kind = ANY($2)'; }
     const rows = await this.source.query(sql, params);
     if (!rows.length) throw new NotFoundException('Content not found');
-    return rows[0];
+    return (await this.withStarLimits(rows))[0];
   }
 }

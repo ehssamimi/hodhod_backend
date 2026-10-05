@@ -22,6 +22,15 @@ export class AdminUsersController {
   @ApiForbiddenResponse({ description: 'Admin role required' })
   list(@Query() query: ListUsersQueryDto) { return this.users.list(query); }
 
+  @Get(':id')
+  @ApiOperation({ summary: 'Get one account for user administration', description: 'Same fields as the list items; never includes token or session data.' })
+  @ApiOkResponse({ type: ProfileDto })
+  @ApiBadRequestResponse({ description: 'Invalid UUID' })
+  @ApiUnauthorizedResponse({ description: 'Missing, expired or revoked access token' })
+  @ApiForbiddenResponse({ description: 'Admin role required' })
+  @ApiNotFoundResponse({ description: 'User not found' })
+  get(@Param('id', ParseUUIDPipe) id: string) { return this.users.get(id); }
+
   @Patch(':id/role')
   @ApiOperation({ summary: 'Change a user role, audit the change and revoke existing tokens' })
   @ApiOkResponse({ type: ProfileDto })

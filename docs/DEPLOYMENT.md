@@ -29,6 +29,31 @@ bad settings are printed, never values.
 5. Verify: `GET /health/ready` returns `{"status":"ready"}` (the container health check uses it);
    `GET /health` is liveness only
 
+## GitHub Actions CI/CD
+
+`.github/workflows/ci-cd.yml` verifies every pull request and every push to `main`: it installs locked
+dependencies, builds, runs the Jest suite, runs the disposable PostgreSQL migration/backup/restore
+suite, and builds the production image. A push to `main` is deployed only after all those checks pass.
+
+Prepare the production server once with Docker Compose, Git, Node.js 22, a checkout of this repository,
+and an untracked `.env.production`. The SSH account must be able to run Docker without an interactive
+password. Configure these secrets on the GitHub `production` environment (environment protection is
+recommended):
+
+- `SSH_HOST`, `SSH_PORT`, `SSH_USER`: production SSH connection
+- `SSH_PRIVATE_KEY`: private key dedicated to GitHub Actions
+- `SSH_KNOWN_HOSTS`: the verified `known_hosts` line for the production server (do not generate it
+  inside CI with an unverified `ssh-keyscan`)
+- `DEPLOY_PATH`: absolute server checkout path using only letters, digits, `.`, `_`, `-`, and `/`
+
+The deploy job fetches and checks out the exact commit that passed CI. `scripts/deploy.sh` creates a
+timestamped pre-deploy database backup when PostgreSQL is already running, builds the API, shows and
+runs migrations once, starts the stack, and checks `/health/ready`. If deployment fails after switching
+revisions, it rebuilds and starts the previous application revision; already-applied migrations are not
+reverted. It retains the existing Compose project name `hodhod`, so the current containers and named
+PostgreSQL volume are reused. Move `backups/` off-host and apply a retention policy as part of server
+operations.
+
 Migrations are additive and each batch runs in one transaction. Roll the application back first if a
 release misbehaves; do not revert migrations that already hold real data (see `docs/DATABASE.md`).
 

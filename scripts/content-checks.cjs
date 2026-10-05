@@ -49,7 +49,9 @@ module.exports = async ({ source, request, login, teacher, admin }) => {
   assert.equal(byId[partial].unityId, 'unity.v1');
   assert.equal(byId[partial].version, 1);
   assert.equal(byId[adventure].grade, 3);
-  assert.deepEqual(Object.keys(byId[adventure]).sort(), ['grade', 'id', 'kind', 'publishedAt', 'subject', 'title', 'unityId', 'version']);
+  assert.equal(byId[adventure].maxStars, 5);
+  assert.equal(byId[adventure].passStars, 3);
+  assert.deepEqual(Object.keys(byId[adventure]).sort(), ['grade', 'id', 'kind', 'maxStars', 'passStars', 'publishedAt', 'subject', 'title', 'unityId', 'version']);
   assert.deepEqual(ids(await s('?subject=' + encodeURIComponent(subject) + '&kind=adventure')).sort(), [adventure, both].sort());
   assert.deepEqual(ids(await s('?subject=' + encodeURIComponent(subject) + '&kind=practice')).sort(), [practice, both, partial].sort());
   assert.deepEqual(ids(await s('?subject=' + encodeURIComponent(subject) + '&q=BOTH')), [both]);

@@ -1,7 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
 import { User } from '../users/user.entity';
-import { CurrentMembershipDto, MembershipDto } from './memberships.dto';
+import { ClassMemberDto, CurrentMembershipDto, MembershipDto } from './memberships.dto';
 
 const projection = `m.id, m.class_id AS "classId", c.name AS "className",
   m.student_id AS "studentId", m.joined_at AS "joinedAt", m.ended_at AS "endedAt"`;
@@ -76,10 +76,11 @@ export class MembershipsService {
     if (!rows.length) throw new NotFoundException('Class not found');
   }
 
-  members(actor: User, classId: string): Promise<MembershipDto[]> {
+  members(actor: User, classId: string): Promise<ClassMemberDto[]> {
     return this.authorized(actor, 'teacher', async manager => {
       await this.ownedClass(manager, actor, classId);
-      return manager.query(`SELECT ${projection} FROM class_memberships m JOIN classes c ON c.id=m.class_id
+      return manager.query(`SELECT ${projection}, u.display_name AS "displayName" FROM class_memberships m
+        JOIN classes c ON c.id=m.class_id JOIN users u ON u.id=m.student_id
         WHERE m.class_id=$1 AND m.ended_at IS NULL AND c.status='active' ORDER BY m.joined_at,m.id`, [classId]);
     });
   }

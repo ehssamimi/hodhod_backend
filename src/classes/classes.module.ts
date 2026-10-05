@@ -4,7 +4,7 @@ import { CurrentUser, Roles } from '../auth/security';
 import { User } from '../users/user.entity';
 import { ClassDto, CreateClassDto } from './classes.dto';
 import { ClassesService } from './classes.service';
-import { MembershipDto } from './memberships.dto';
+import { ClassMemberDto } from './memberships.dto';
 import { MembershipsService } from './memberships.service';
 
 @ApiTags('Teacher / Classes')
@@ -20,7 +20,7 @@ export class ClassesController {
 
   @Get(':id/members')
   @ApiOperation({ summary: 'List current members of your class; archived classes return an empty list' })
-  @ApiOkResponse({ type: [MembershipDto] })
+  @ApiOkResponse({ type: [ClassMemberDto] })
   members(@CurrentUser() user: User, @Param('id', ParseUUIDPipe) id: string) { return this.memberships.members(user, id); }
 
   @Delete(':id/members/:studentId')

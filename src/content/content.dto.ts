@@ -39,4 +39,6 @@ export class ContentDto {
   unityId!: string;
   @ApiProperty({ example: 1, description: 'Current published version number' }) version!: number;
   @ApiProperty({ format: 'date-time' }) publishedAt!: Date;
+  @ApiProperty({ example: 5, description: 'Stars available under the effective scoring rule (content rule, else global, else default)' }) maxStars!: number;
+  @ApiProperty({ example: 3, description: 'Best stars needed to pass under the effective scoring rule' }) passStars!: number;
 }

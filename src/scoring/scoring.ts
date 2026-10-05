@@ -1,4 +1,4 @@
-import { EntityManager } from 'typeorm';
+import { DataSource, EntityManager } from 'typeorm';
 
 export interface EffectiveRule {
   id: string;
@@ -16,6 +16,12 @@ function positive(name: string, fallback: number): number {
   const value = Number(process.env[name] ?? fallback);
   if (!Number.isInteger(value) || value < 0 || value > 10) throw new Error('Invalid ' + name);
   return value;
+}
+
+// Star limits used when no rule row exists yet (the same defaults effectiveRule() would persist).
+export function defaultStarLimits(): { maxStars: number; passStars: number } {
+  const max = positive('SCORING_DEFAULT_MAX_STARS', 5) || 5;
+  return { maxStars: max, passStars: Math.min(positive('SCORING_DEFAULT_PASS_STARS', 3), max) };
 }
 
 // SCORING_STAR_POINTS lists the total points for having 0,1,2,... best stars, e.g. "0,0,0,20,30".
@@ -40,8 +46,7 @@ export async function effectiveRule(manager: EntityManager, contentId: string): 
     await manager.query('SELECT pg_advisory_xact_lock(hashtextextended($1, $2))', ['rule:global', RULE_LOCK_SEED]);
     rows = await find();
     if (!rows.length) {
-      const max = positive('SCORING_DEFAULT_MAX_STARS', 5) || 5;
-      const pass = positive('SCORING_DEFAULT_PASS_STARS', 3);
+      const { maxStars: max, passStars: pass } = defaultStarLimits();
       const points = defaultStarPoints();
       rows = await manager.query(`INSERT INTO scoring_rules(content_id,version,max_stars,pass_stars,definition) VALUES (NULL,1,$1,$2,$3) RETURNING ${projection}`,
         [max, Math.min(pass, max), points.length ? { starPoints: points } : {}]);
@@ -60,4 +65,22 @@ export function pointsForStars(rule: EffectiveRule, stars: number): number {
     if (typeof value === 'number' && Number.isInteger(value) && value >= 0) return value;
   }
   return 0;
+}
+
+// Read-only star limits for display: content rule, else global rule, else environment defaults.
+// Unlike effectiveRule() this never writes, so it is safe on list endpoints.
+export async function starLimitsFor(source: DataSource | EntityManager, contentIds: string[]): Promise<Map<string, { maxStars: number; passStars: number }>> {
+  const fallback = defaultStarLimits();
+  const rows: Array<{ contentId: string | null; maxStars: number; passStars: number }> = contentIds.length
+    ? await source.query(`SELECT DISTINCT ON (content_id) content_id AS "contentId", max_stars AS "maxStars", pass_stars AS "passStars"
+        FROM scoring_rules WHERE content_id = ANY($1) OR content_id IS NULL
+        ORDER BY content_id, version DESC`, [contentIds])
+    : [];
+  const global = rows.find(row => row.contentId === null) ?? fallback;
+  const limits = new Map<string, { maxStars: number; passStars: number }>();
+  for (const id of contentIds) {
+    const own = rows.find(row => row.contentId === id);
+    limits.set(id, { maxStars: (own ?? global).maxStars, passStars: (own ?? global).passStars });
+  }
+  return limits;
 }

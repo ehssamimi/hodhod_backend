@@ -304,6 +304,55 @@
         ]
       }
     },
+    "/admin/users/{id}": {
+      "get": {
+        "description": "Same fields as the list items; never includes token or session data.",
+        "operationId": "AdminUsersController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID"
+          },
+          "401": {
+            "description": "Missing, expired or revoked access token"
+          },
+          "403": {
+            "description": "Admin role required"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get one account for user administration",
+        "tags": [
+          "Admin / Users"
+        ]
+      }
+    },
     "/admin/users/{id}/role": {
       "patch": {
         "operationId": "AdminUsersController_changeRole",

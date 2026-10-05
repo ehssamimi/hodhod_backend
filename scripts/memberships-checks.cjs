@@ -38,7 +38,7 @@ module.exports = async ({ source, request, login, teacher, admin }) => {
   assert.equal(first.data.membership.studentId,student.user.id);
   assert.deepEqual((await join(a.joinCode)).data,first.data);
   assert.equal((await history()).data.length,1);
-  assert.deepEqual((await roster(a)).data,[first.data.membership]);
+  assert.deepEqual((await roster(a)).data,[{...first.data.membership,displayName:student.user.displayName ?? null}]);
   assert.equal((await roster(a,secondTeacher)).status,404);
   assert.equal((await remove(a,secondTeacher)).status,404);
   assert.equal((await roster(a,{accessToken:student.accessToken})).status,403);

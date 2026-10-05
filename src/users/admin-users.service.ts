@@ -1,10 +1,18 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { ListUsersQueryDto, UserListDto } from './user.dto';
+import { ListUsersQueryDto, ProfileDto, UserListDto } from './user.dto';
 
 @Injectable()
 export class AdminUsersService {
   constructor(private readonly source: DataSource) {}
+
+  async get(id: string): Promise<ProfileDto> {
+    const rows = await this.source.query(`SELECT u.id, u.email, u.role,
+        u.display_name AS "displayName", u.avatar_id AS "avatarId", u.timezone, u."createdAt"
+      FROM users u WHERE u.id=$1`, [id]);
+    if (!rows.length) throw new NotFoundException('User not found');
+    return rows[0];
+  }
 
   async list(query: ListUsersQueryDto): Promise<UserListDto> {
     const params: unknown[] = [];

@@ -19,6 +19,10 @@ export class MembershipDto {
   @ApiProperty({ type: String, format: 'date-time', nullable: true, example: null }) endedAt!: Date | null;
 }
 
+export class ClassMemberDto extends MembershipDto {
+  @ApiProperty({ type: String, nullable: true, example: 'Sara', description: 'Student display name; null when the student has not set one. Never includes email.' }) displayName!: string | null;
+}
+
 export class CurrentMembershipDto {
   @ApiProperty({ type: MembershipDto, nullable: true, description: 'Null is a valid student without a class' })
   membership!: MembershipDto | null;

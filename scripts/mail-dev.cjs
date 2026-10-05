@@ -1,4 +1,5 @@
 // Local-only SMTP inbox. Does not forward messages or write them to disk.
+require('dotenv/config');
 const { SMTPServer } = require('smtp-server');
 const { createServer } = require('node:http');
 const messages = [];
@@ -19,7 +20,10 @@ const http = createServer((req,res) => {
   if (req.method !== 'GET' || req.url !== '/') { res.statusCode=404; return res.end(); }
   res.end(JSON.stringify(messages,null,2));
 });
-smtp.listen(1025,'127.0.0.1', () => console.log('Local SMTP: 127.0.0.1:1025'));
-http.listen(8025,'127.0.0.1', () => console.log('Local inbox: http://127.0.0.1:8025'));
+// Windows reserves some low ports (netsh interface ipv4 show excludedportrange protocol=tcp); override when 1025 is taken.
+const smtpPort = Number(process.env.SMTP_PORT ?? 1025);
+const inboxPort = Number(process.env.MAIL_DEV_INBOX_PORT ?? 8025);
+smtp.listen(smtpPort,'127.0.0.1', () => console.log('Local SMTP: 127.0.0.1:'+smtpPort));
+http.listen(inboxPort,'127.0.0.1', () => console.log('Local inbox: http://127.0.0.1:'+inboxPort));
 function stop() { smtp.close(); http.close(); }
 process.on('SIGINT',stop); process.on('SIGTERM',stop);

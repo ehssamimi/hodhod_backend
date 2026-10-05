@@ -16,7 +16,7 @@ export class ClassDto {
   @ApiProperty({ format: 'uuid' }) teacherId!: string;
   @ApiProperty() name!: string;
   @ApiProperty({ enum: ['active', 'archived'] }) status!: string;
-  @ApiProperty({ nullable: true, description: 'Active join code; null for archived classes' }) joinCode!: string | null;
+  @ApiProperty({ type: String, nullable: true, description: 'Active join code; null for archived classes' }) joinCode!: string | null;
   @ApiProperty({ format: 'date-time' }) createdAt!: Date;
-  @ApiProperty({ format: 'date-time', nullable: true }) archivedAt!: Date | null;
+  @ApiProperty({ type: String, format: 'date-time', nullable: true }) archivedAt!: Date | null;
 }
