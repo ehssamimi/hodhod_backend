@@ -82,6 +82,13 @@ jobs:
           [[ "$SSH_USER" =~ ^[A-Za-z0-9._-]+$ ]]
           [[ "$DEPLOY_PATH" =~ ^/[A-Za-z0-9._/-]+$ ]]
           [[ "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          runner_ip=$(curl -4fsS --max-time 10 https://api.ipify.org || true)
+          echo "GitHub runner public IPv4: ${runner_ip:-unavailable}"
+          if timeout 10 bash -c 'exec 3<>/dev/tcp/$1/$2' _ "$SSH_HOST" "$SSH_PORT"; then
+            echo "SSH TCP port is reachable from this runner"
+          else
+            echo "SSH TCP port is not reachable from this runner" >&2
+          fi
           ssh -i ~/.ssh/id_ed25519 -p "$SSH_PORT" \
             -o BatchMode=yes -o IdentitiesOnly=yes \
             "$SSH_USER@$SSH_HOST" \
